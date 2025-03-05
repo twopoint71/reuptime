@@ -1,0 +1,360 @@
+/* Srcery Color Palette */
+:root {
+    --srcery-black: #1c1b19;
+    --srcery-bright-black: #2d2c29;
+    --srcery-red: #ef2f27;
+    --srcery-bright-red: #f75341;
+    --srcery-green: #519f50;
+    --srcery-bright-green: #98bc37;
+    --srcery-yellow: #fbb829;
+    --srcery-bright-yellow: #fed06e;
+    --srcery-blue: #2c78bf;
+    --srcery-bright-blue: #68a8e4;
+    --srcery-magenta: #e02c6d;
+    --srcery-bright-magenta: #ff5c8f;
+    --srcery-cyan: #0aaeb3;
+    --srcery-bright-cyan: #53fde9;
+    --srcery-white: #918175;
+    --srcery-bright-white: #fce8c3;
+    --srcery-orange: #d75f00;
+    --srcery-bright-orange: #ff8700;
+    --srcery-hard-black: #121212;
+    --srcery-xgray1: #262626;
+    --srcery-xgray2: #303030;
+    --srcery-xgray3: #3a3a3a;
+    --srcery-xgray4: #444444;
+    --srcery-xgray5: #4e4e4e;
+}
+
+/* Preload dark mode to prevent flash */
+html.dark-mode-preload,
+html.dark-mode-preload body {
+    background-color: var(--srcery-black);
+    color: var(--srcery-bright-white);
+    transition: none !important;
+}
+
+html.dark-mode-preload .navbar {
+    background-color: var(--srcery-hard-black) !important;
+    border-bottom: 1px solid var(--srcery-xgray3) !important;
+    transition: none !important;
+}
+
+html.dark-mode-preload .card {
+    background-color: var(--srcery-xgray1);
+    border-color: var(--srcery-xgray3);
+    transition: none !important;
+}
+
+html.dark-mode-preload .card-header {
+    background-color: var(--srcery-xgray2);
+    border-color: var(--srcery-xgray3);
+    color: var(--srcery-bright-white);
+    transition: none !important;
+}
+
+html.dark-mode-preload .table {
+    color: var(--srcery-bright-white);
+    transition: none !important;
+}
+
+html.dark-mode-preload a {
+    color: var(--srcery-bright-blue);
+    transition: none !important;
+}
+
+/* Light Mode Styles */
+/* Navbar styling for light mode */
+.navbar {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid #dee2e6;
+    background-color: #f8f9fa !important;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    color: #212529 !important;
+}
+
+.navbar-nav .nav-link {
+    color: #212529 !important;
+    font-weight: 500;
+}
+
+.navbar-nav .nav-link.active {
+    color: var(--srcery-blue) !important;
+    font-weight: bold;
+}
+
+.navbar-nav .nav-link:hover {
+    color: var(--srcery-bright-blue) !important;
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+    background-color: var(--srcery-black);
+    color: #ffffff; /* Improved contrast with pure white text */
+}
+
+body.dark-mode .navbar {
+    background-color: var(--srcery-hard-black) !important;
+    border-bottom: 1px solid var(--srcery-xgray3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .navbar-brand {
+    color: var(--srcery-bright-orange) !important;
+    font-weight: bold;
+}
+
+body.dark-mode .navbar-nav .nav-link {
+    color: #ffffff !important; /* Improved contrast */
+}
+
+body.dark-mode .navbar-nav .nav-link.active {
+    color: var(--srcery-bright-yellow) !important;
+    font-weight: bold;
+}
+
+body.dark-mode .navbar-nav .nav-link:hover {
+    color: var(--srcery-bright-cyan) !important;
+}
+
+body.dark-mode .navbar-toggler {
+    border-color: var(--srcery-xgray4);
+    color: #ffffff;
+}
+
+body.dark-mode .navbar-toggler-icon {
+    filter: brightness(1.5);
+}
+
+body.dark-mode .card {
+    background-color: var(--srcery-xgray1);
+    border-color: var(--srcery-xgray3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-mode .card-header {
+    background-color: var(--srcery-xgray2);
+    border-color: var(--srcery-xgray3);
+    color: #ffffff; /* Improved contrast */
+    font-weight: 500;
+}
+
+body.dark-mode .table {
+    color: #ffffff; /* Improved contrast */
+}
+
+body.dark-mode .table thead th {
+    border-color: var(--srcery-xgray3);
+    background-color: var(--srcery-xgray2);
+    color: #ffffff; /* Improved contrast */
+    font-weight: 600;
+}
+
+body.dark-mode .table td, 
+body.dark-mode .table th {
+    border-color: var(--srcery-xgray3);
+}
+
+body.dark-mode .modal-content {
+    background-color: var(--srcery-xgray1);
+    border-color: var(--srcery-xgray3);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+    border-color: var(--srcery-xgray3);
+}
+
+body.dark-mode .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+body.dark-mode .form-control {
+    background-color: var(--srcery-xgray2);
+    border-color: var(--srcery-xgray4);
+    color: #ffffff; /* Improved contrast */
+}
+
+body.dark-mode .form-control:focus {
+    background-color: var(--srcery-xgray3);
+    color: #ffffff; /* Improved contrast */
+    border-color: var(--srcery-bright-blue);
+    box-shadow: 0 0 0 0.25rem rgba(44, 120, 191, 0.25);
+}
+
+body.dark-mode .btn-primary {
+    background-color: var(--srcery-blue);
+    border-color: var(--srcery-bright-blue);
+    color: #ffffff; /* Improved contrast */
+}
+
+body.dark-mode .btn-primary:hover {
+    background-color: var(--srcery-bright-blue);
+    border-color: var(--srcery-bright-blue);
+}
+
+body.dark-mode .btn-secondary {
+    background-color: var(--srcery-xgray4);
+    border-color: var(--srcery-xgray5);
+    color: #ffffff; /* Improved contrast */
+}
+
+body.dark-mode .btn-secondary:hover {
+    background-color: var(--srcery-xgray5);
+    border-color: var(--srcery-white);
+}
+
+body.dark-mode .btn-danger {
+    background-color: var(--srcery-red);
+    border-color: var(--srcery-bright-red);
+    color: #ffffff; /* Improved contrast */
+}
+
+body.dark-mode .btn-danger:hover {
+    background-color: var(--srcery-bright-red);
+    border-color: var(--srcery-bright-red);
+}
+
+body.dark-mode .btn-success {
+    background-color: var(--srcery-green);
+    border-color: var(--srcery-bright-green);
+    color: #ffffff; /* Improved contrast */
+}
+
+body.dark-mode .btn-success:hover {
+    background-color: var(--srcery-bright-green);
+    border-color: var(--srcery-bright-green);
+}
+
+body.dark-mode .btn-info {
+    background-color: var(--srcery-cyan);
+    border-color: var(--srcery-bright-cyan);
+    color: var(--srcery-black);
+    font-weight: 500;
+}
+
+body.dark-mode .btn-info:hover {
+    background-color: var(--srcery-bright-cyan);
+    border-color: var(--srcery-bright-cyan);
+    color: var(--srcery-black);
+}
+
+body.dark-mode .toast {
+    background-color: var(--srcery-xgray2);
+    border-color: var(--srcery-xgray4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    color: #ffffff; /* Improved contrast */
+}
+
+body.dark-mode .toast-header {
+    background-color: var(--srcery-xgray3);
+    color: #ffffff; /* Improved contrast */
+    border-color: var(--srcery-xgray4);
+}
+
+body.dark-mode a {
+    color: var(--srcery-bright-blue);
+}
+
+body.dark-mode a:hover {
+    color: var(--srcery-bright-cyan);
+}
+
+/* Badge styling in dark mode */
+body.dark-mode .badge.bg-success {
+    background-color: var(--srcery-green) !important;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+body.dark-mode .badge.bg-danger {
+    background-color: var(--srcery-red) !important;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+/* Dark mode toggle button in navbar */
+#darkModeToggle {
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #212529;
+    border-color: #6c757d;
+}
+
+#darkModeToggle:hover {
+    transform: scale(1.05);
+    background-color: #e9ecef;
+}
+
+#darkModeToggle i {
+    color: #ffc107; /* Yellow color for the moon icon in light mode */
+}
+
+body.dark-mode #darkModeToggle {
+    background-color: var(--srcery-xgray3);
+    border-color: var(--srcery-xgray5);
+    color: #ffffff; /* Improved contrast */
+}
+
+body.dark-mode #darkModeToggle:hover {
+    background-color: var(--srcery-xgray4);
+}
+
+body.dark-mode #darkModeToggle i {
+    color: var(--srcery-bright-yellow);
+}
+
+/* Light mode (default) styles */
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
+    color: #212529;
+}
+
+.card, .modal-content, .navbar, .toast {
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Card styling for light mode */
+.card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #dee2e6;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 500;
+    color: #212529;
+}
+
+/* Table styling for light mode */
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #212529;
+}
+
+/* Link styling for light mode */
+a {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #0a58ca;
+    text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #darkModeToggle span {
+        display: none;
+    }
+}

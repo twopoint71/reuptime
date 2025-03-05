@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReUptime - Host Monitoring</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Immediate dark mode script -->
+    <script>
+        // Check for dark mode preference (localStorage is faster than cookies)
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            document.documentElement.classList.add('dark-mode-preload');
+            document.body.classList.add('dark-mode-preload');
+            
+            // We need to set this after the DOM is loaded
+            document.addEventListener('DOMContentLoaded', function() {
+                const navbar = document.querySelector('.navbar');
+                if (navbar) {
+                    navbar.classList.remove('navbar-light', 'bg-light');
+                    navbar.classList.add('navbar-dark', 'bg-dark');
+                }
+                
+                const darkModeToggle = document.getElementById('darkModeToggle');
+                if (darkModeToggle) {
+                    darkModeToggle.classList.remove('btn-outline-secondary');
+                    darkModeToggle.classList.add('btn-outline-light');
+                }
+            });
+        }
+    </script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">ReUptime</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Hosts</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/deleted_hosts">Deleted Hosts</a>
+                    </li>
+                </ul>
+                <!-- Dark Mode Toggle in Navbar -->
+                <div class="nav-item">
+                    <button class="btn btn-outline-secondary" id="darkModeToggle">
+                        <i class="fas fa-moon"></i>
+                        <span class="ms-2 d-none d-md-inline">Toggle Dark Mode</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Host Monitoring</h1>
+        
+        <!-- Action Buttons -->
+        <div class="mb-3">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHostModal">
+                Add Host
+            </button>
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importHostsModal">
+                Import Hosts
+            </button>
+        </div>
+        
+        <!-- Add Host Modal -->
+        <div class="modal fade" id="addHostModal" tabindex="-1" aria-labelledby="addHostModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addHostModalLabel">Add Host</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addHostForm" action="/add_host" method="post">
+                            <div class="mb-3">
+                                <label for="aws_account_label" class="form-label">AWS Account Label</label>
+                                <input type="text" class="form-control" id="aws_account_label" name="aws_account_label" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="aws_account_id" class="form-label">AWS Account ID</label>
+                                <input type="text" class="form-control" id="aws_account_id" name="aws_account_id" required pattern="[0-9]{12}" title="AWS Account ID must be 12 digits">
+                            </div>
+                            <div class="mb-3">
+                                <label for="aws_region" class="form-label">AWS Region</label>
+                                <input type="text" class="form-control" id="aws_region" name="aws_region" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="aws_instance_id" class="form-label">AWS Instance ID</label>
+                                <input type="text" class="form-control" id="aws_instance_id" name="aws_instance_id" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="aws_instance_ip" class="form-label">AWS Instance IP</label>
+                                <input type="text" class="form-control" id="aws_instance_ip" name="aws_instance_ip" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="aws_instance_name" class="form-label">AWS Instance Name</label>
+                                <input type="text" class="form-control" id="aws_instance_name" name="aws_instance_name" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Host</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Import Hosts Modal -->
+        <div class="modal fade" id="importHostsModal" tabindex="-1" aria-labelledby="importHostsModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="importHostsModalLabel">Import Hosts</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="importHostsForm" action="/import" method="post" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="csv_file" class="form-label">CSV File</label>
+                                <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                            </div>
+                            <div class="mb-3">
+                                <p>CSV should have the following headers:</p>
+                                <ul>
+                                    <li>AWS Account Label</li>
+                                    <li>AWS Account ID</li>
+                                    <li>AWS Region</li>
+                                    <li>AWS Instance ID</li>
+                                    <li>AWS Instance IP Address</li>
+                                    <li>AWS Instance Name</li>
+                                </ul>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Import</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Hosts Table -->
+        <div class="card">
+            <div class="card-header">
+                Hosts
+            </div>
+            <div class="card-body">
+                <table class="table" id="hostsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>IP</th>
+                            <th>Region</th>
+                            <th>Status</th>
+                            <th>Last Check</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Table rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Modals Container -->
+        <div id="modalsContainer">
+            <!-- Modals will be dynamically added here -->
+        </div>
+        
+        <!-- Undo Delete Toast -->
+        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+            <div id="undoToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="10000">
+                <div class="toast-header">
+                    <strong class="me-auto">Host Deleted</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    <span id="deletedHostName"></span> has been deleted and moved to the deleted hosts list. 
+                    <a href="#" id="undoLink">Undo</a> or view all 
+                    <a href="/deleted_hosts">deleted hosts</a>.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html> 
