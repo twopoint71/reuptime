@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, url_for, render_template
+from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, url_for
 import os
 import sys
 from pathlib import Path
@@ -53,15 +53,15 @@ def reinit_db_command():
 def create_rrd(host_id):
     """Create RRD file for a host if it doesn't exist already."""
     rrd_path = os.path.join(app.config['RRD_PATH'], f"{host_id}.rrd")
-    
+
     # Check if the RRD file already exists
     if os.path.exists(rrd_path):
         app.logger.info(f"RRD file for host {host_id} already exists, preserving historic data")
         return rrd_path
-    
+
     # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(rrd_path), exist_ok=True)
-    
+
     # Define RRD structure - 1 year of data
     # Step: 60 seconds (1 minute)
     # DS: uptime (gauge) and latency (gauge)
@@ -77,7 +77,7 @@ def create_rrd(host_id):
         "RRA:AVERAGE:0.5:30:1488",    # 30 minute average for 31 days
         "RRA:AVERAGE:0.5:1440:365"    # 1 day average for 1 year
     )
-    
+
     app.logger.info(f"Created RRD file for host {host_id}")
     return rrd_path
 
@@ -94,11 +94,11 @@ if __name__ == '__main__':
         print("Initializing database...")
         init_db(app.config)
         print("Database initialized successfully.")
-        
+
         print("Setting up directories...")
         setup_directories(app.config)
         print("Directories set up successfully.")
-        
+
         # Initialize RRD databases for existing hosts
         print("Initializing RRD databases for existing hosts...")
         from rrd_utils import init_rrd
@@ -111,29 +111,29 @@ if __name__ == '__main__':
                     print(f"RRD initialized successfully for host {host['id']}.")
                 except Exception as e:
                     print(f"Error initializing RRD for host {host['id']}: {str(e)}")
-        
+
         print("Starting Flask application...")
         if not app.debug:
             # Ensure log directory exists
             if not os.path.exists('logs'):
                 os.mkdir('logs')
-            
+
             # Set up file handler
             file_handler = RotatingFileHandler('logs/reuptime.log', maxBytes=10240, backupCount=10)
             file_handler.setFormatter(logging.Formatter(
                 '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
             ))
             file_handler.setLevel(logging.INFO)
-            
+
             # Apply handler to app logger
             app.logger.addHandler(file_handler)
             app.logger.setLevel(logging.INFO)
             app.logger.info('ReUptime startup')
-        
+
         app.run()
     except Exception as e:
         print(f"Error initializing application: {str(e)}")
-        
+
         # If the error is related to database permissions, provide more helpful information
         if "readonly database" in str(e):
             print("\nThis error is likely due to permission issues with the database file.")
@@ -148,5 +148,5 @@ if __name__ == '__main__':
             print("   $ chmod 644 uptime.db")
             print("   $ chmod 755 .")
             print("4. If the database file doesn't exist yet, check the permissions of the parent directory.")
-        
-        sys.exit(1) 
+
+        sys.exit(1)

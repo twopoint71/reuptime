@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}ReUptime - Monitor Log{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">ICMP Monitor Log</h5>
+                <div>
+                    <button id="refreshLog" class="btn btn-primary btn-sm">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <button id="autoRefresh" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-play-fill"></i> Auto Refresh
+                    </button>
+                    <select id="logLines" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                        <option value="50">Last 50 lines</option>
+                        <option value="100">Last 100 lines</option>
+                        <option value="200">Last 200 lines</option>
+                        <option value="500">Last 500 lines</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="log-container bg-dark text-light p-3" style="height: 70vh; overflow-y: auto; font-family: monospace;">
+                    <pre id="logContent">Loading log data...</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get elements
+        const logContent = document.getElementById('logContent');
+        const refreshBtn = document.getElementById('refreshLog');
+        const autoRefreshBtn = document.getElementById('autoRefresh');
+        const logLinesSelect = document.getElementById('logLines');
+        
+        let autoRefreshInterval = null;
+        let isAutoRefreshing = false;
+        
+        // Function to fetch log data
+        async function fetchLogData() {
+            try {
+                const lines = logLinesSelect.value;
+                const response = await fetch(`/api/monitor_log?lines=${lines}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                logContent.textContent = data.log_content;
+                
+                // Scroll to bottom
+                logContent.parentElement.scrollTop = logContent.parentElement.scrollHeight;
+            } catch (error) {
+                console.error('Error fetching log data:', error);
+                logContent.textContent = 'Error loading log data. Please try again.';
+            }
+        }
+        
+        // Initial fetch
+        fetchLogData();
+        
+        // Refresh button click
+        refreshBtn.addEventListener('click', fetchLogData);
+        
+        // Auto refresh toggle
+        autoRefreshBtn.addEventListener('click', function() {
+            if (isAutoRefreshing) {
+                // Stop auto refresh
+                clearInterval(autoRefreshInterval);
+                autoRefreshBtn.innerHTML = '<i class="bi bi-play-fill"></i> Auto Refresh';
+                autoRefreshBtn.classList.remove('btn-success');
+                autoRefreshBtn.classList.add('btn-outline-secondary');
+                isAutoRefreshing = false;
+            } else {
+                // Start auto refresh (every 5 seconds)
+                autoRefreshInterval = setInterval(fetchLogData, 5000);
+                autoRefreshBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Stop Refresh';
+                autoRefreshBtn.classList.remove('btn-outline-secondary');
+                autoRefreshBtn.classList.add('btn-success');
+                isAutoRefreshing = true;
+            }
+        });
+        
+        // Log lines select change
+        logLinesSelect.addEventListener('change', fetchLogData);
+    });
+</script>
+{% endblock %} 

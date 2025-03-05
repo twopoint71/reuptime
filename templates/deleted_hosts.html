@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Deleted Hosts - ReUptime{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Deleted Hosts</h1>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Deleted Hosts
+    </div>
+    <div class="card-body">
+        <table class="table" id="deletedHostsTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>IP</th>
+                    <th>Region</th>
+                    <th>Status</th>
+                    <th>Deleted At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table rows will be populated by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Toast container will be created by JavaScript -->
+<div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/deleted_hosts.js"></script>
+{% endblock %} 
