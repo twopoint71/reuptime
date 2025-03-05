@@ -11,17 +11,17 @@ import sys
 import time
 import signal
 import logging
-import sqlite3
-import subprocess
 import threading
 from datetime import datetime
 import argparse
 import json
 import atexit
+import subprocess
 
 # Add the parent directory to the path so we can import from the root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from rrd_utils import get_rrd_path, update_rrd
+from db import get_db, init_db, get_default_db_path  # Import get_default_db_path from db.py
 
 # Configure logging
 logging.basicConfig(
@@ -36,7 +36,8 @@ logger = logging.getLogger('icmp_monitor')
 
 # Global variables
 running = True
-db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../instance/reuptime.db'))
+# Get database path from db.py instead of hardcoding it
+db_path = get_default_db_path()
 pid_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'daemon.pid'))
 status_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'daemon_status.json'))
 app_config = {
@@ -45,66 +46,9 @@ app_config = {
     'MONITOR_LOG_PATH': os.path.join(os.path.dirname(__file__), 'icmp_monitor.log')
 }
 
-def init_db():
-    """Initialize the database if it doesn't exist."""
-    try:
-        logger.info(f"Checking database at {db_path}")
-        
-        # Create the database directory if it doesn't exist
-        db_dir = os.path.dirname(db_path)
-        if not os.path.exists(db_dir):
-            logger.info(f"Creating database directory: {db_dir}")
-            os.makedirs(db_dir, exist_ok=True)
-        
-        with get_db() as db:
-            # Create hosts table if it doesn't exist
-            db.execute('''
-                CREATE TABLE IF NOT EXISTS hosts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    account_label TEXT,
-                    account_id TEXT,
-                    region TEXT,
-                    host_id TEXT,
-                    host_ip_address TEXT,
-                    host_name TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    last_check TIMESTAMP,
-                    is_active INTEGER DEFAULT 1
-                )
-            ''')
-            
-            # Create deleted_hosts table if it doesn't exist
-            db.execute('''
-                CREATE TABLE IF NOT EXISTS deleted_hosts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    account_label TEXT,
-                    account_id TEXT,
-                    region TEXT,
-                    host_id TEXT,
-                    host_ip_address TEXT,
-                    host_name TEXT,
-                    created_at TIMESTAMP,
-                    last_check TIMESTAMP,
-                    is_active INTEGER,
-                    deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            db.commit()
-            logger.info("Database initialized successfully")
-    except Exception as e:
-        logger.error(f"Error initializing database: {str(e)}")
-        raise
-
-def get_db():
-    """Connect to the SQLite database."""
-    db = sqlite3.connect(db_path)
-    db.row_factory = sqlite3.Row
-    return db
-
 def get_all_hosts():
     """Get all hosts from the database."""
-    with get_db() as db:
+    with get_db(app_config) as db:
         return db.execute('SELECT * FROM hosts').fetchall()
 
 def check_host(host):
@@ -126,7 +70,7 @@ def check_host(host):
         success = result.returncode == 0
         
         # Update host status in database
-        with get_db() as db:
+        with get_db(app_config) as db:
             db.execute('''
                 UPDATE hosts 
                 SET last_check = CURRENT_TIMESTAMP, is_active = ?
@@ -170,7 +114,7 @@ def check_host(host):
         return success, latency
     except subprocess.TimeoutExpired:
         logger.warning(f"Ping timeout for host {host['host_name']} (ID: {host['id']})")
-        with get_db() as db:
+        with get_db(app_config) as db:
             db.execute('''
                 UPDATE hosts 
                 SET last_check = CURRENT_TIMESTAMP, is_active = 0
@@ -186,7 +130,7 @@ def check_host(host):
         return False, 1000
     except Exception as e:
         logger.error(f"Error checking host {host['host_name']} (ID: {host['id']}): {str(e)}")
-        with get_db() as db:
+        with get_db(app_config) as db:
             db.execute('''
                 UPDATE hosts 
                 SET last_check = CURRENT_TIMESTAMP, is_active = 0
@@ -347,8 +291,8 @@ def main():
     logger.info(f"Using database: {db_path}")
     
     try:
-        # Initialize the database
-        init_db()
+        # Initialize the database using the imported function
+        init_db(app_config)
         
         # Update status
         update_status('running', f'Daemon started with {args.interval} second interval')

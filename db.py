@@ -81,3 +81,9 @@ def init_db(config):
             )
         ''')
         db.commit() 
+
+# Did not want to hardcode the database path, but the alternative is rather messy
+def get_default_db_path():
+    """Return the database path from environment variable or default location."""
+    return os.environ.get('REUPTIME_DB_PATH', 
+        os.path.abspath(os.path.join(os.path.dirname(__file__), 'instance/reuptime.sqlite'))) 

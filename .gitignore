@@ -14,9 +14,6 @@ instance/
 *.sqlite
 *.sqlite3
 
-# Databases
-*.db
-
 # Project specific
 rrd/*.rrd
 monitors/icmp/daemon.pid
