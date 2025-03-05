@@ -78,7 +78,7 @@ def register_host_routes(app):
                         f.write(f"[ERROR] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Failed to create RRD file for imported host ID {host_id}: {str(e)}\n")
             
             # Redirect to the main page with a success parameter
-            return redirect(url_for('index', hosts_imported=imported_count))
+            return redirect(url_for('host_list', hosts_imported=imported_count))
         
         except Exception as e:
             print(f"Error importing hosts: {str(e)}")  # Add logging for debugging
