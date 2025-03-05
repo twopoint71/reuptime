@@ -28,7 +28,7 @@ def init_rrd(host_id, app_config):
     
     # Set start time to 24 hours before current time
     # Note: The start time must be at least 24 hours + resolution in the past
-    # For a 5-second resolution, we need at least 86400 + 5 = 86405 seconds
+    # For a 10-second resolution, we need at least 86400 + 10 = 86410 seconds
     start_time = int(time.time() - 86500)
 
     if not os.path.exists(rrd_file):
@@ -42,13 +42,13 @@ def init_rrd(host_id, app_config):
             rrdtool.create(
                 rrd_file,
                 '--start', str(start_time),
-                '--step', '5',  # 5-second intervals to match daemon collection frequency
-                f'DS:uptime:GAUGE:10:0:100',  # Uptime percentage, heartbeat of 10 seconds
-                f'DS:latency:GAUGE:10:0:1000',  # Latency in ms, heartbeat of 10 seconds
-                'RRA:AVERAGE:0.5:1:17280',     # 1 day at 5-second resolution (17280 points)
-                'RRA:AVERAGE:0.5:60:1440',     # 5 days at 5-minute resolution (60 points per step)
-                'RRA:AVERAGE:0.5:720:720',     # 30 days at 1-hour resolution (720 points per step)
-                'RRA:AVERAGE:0.5:17280:365'    # 1 year at 1-day resolution (17280 points per step)
+                '--step', '10',  # 10-second intervals to match daemon collection frequency
+                f'DS:uptime:GAUGE:20:0:100',  # Uptime percentage, heartbeat of 20 seconds (2x step)
+                f'DS:latency:GAUGE:20:0:1000',  # Latency in ms, heartbeat of 20 seconds (2x step)
+                'RRA:AVERAGE:0.5:1:8640',      # 1 day at 10-second resolution (8640 points)
+                'RRA:AVERAGE:0.5:30:1440',     # 5 days at 5-minute resolution (30 points per step)
+                'RRA:AVERAGE:0.5:360:720',     # 30 days at 1-hour resolution (360 points per step)
+                'RRA:AVERAGE:0.5:8640:365'     # 1 year at 1-day resolution (8640 points per step)
             )
             print(f"RRD file created successfully: {rrd_file}")
             os.chmod(rrd_file, 0o644)
@@ -126,12 +126,9 @@ def fetch_rrd_data(rrd_file, start_time=None, end_time=None, resolution='AVERAGE
         if end_time is None:
             end_time = int(time.time())
 
-        # Remove the minimum time range enforcement
-        # We'll respect whatever time range was requested
-
-        # Round times to 5-second intervals
-        start_time = (start_time // 5) * 5
-        end_time = (end_time // 5) * 5
+        # Round times to 10-second intervals
+        start_time = (start_time // 10) * 10
+        end_time = (end_time // 10) * 10
 
         # Check if the file exists
         if not os.path.exists(rrd_file):
