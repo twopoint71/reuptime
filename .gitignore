@@ -1,9 +1,43 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+ENV/
 
-# C extensions
+# Flask
+instance/
+*.sqlite
+*.sqlite3
+
+# Databases
+*.db
+
+# Project specific
+rrd/*.rrd
+monitors/icmp/icmp_monitor.log
+monitors/icmp/icmp_monitor.pid
+monitors/icmp/daemon_status.json
+
+# Environment variables
+.env
+.flaskenv
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Byte-compiled / optimized / DLL files
 *.so
 
 # Distribution / packaging
@@ -37,18 +71,9 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
-.pytest_cache/
 cover/
 
 # Translations
@@ -60,10 +85,6 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
 
 # Scrapy stuff:
 .scrapy
@@ -127,15 +148,6 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -170,4 +182,3 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-uptime.db

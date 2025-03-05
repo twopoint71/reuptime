@@ -1,0 +1,16 @@
+[Unit]
+Description=ICMP Monitor Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=bsmith
+WorkingDirectory=/home/bsmith/reuptime
+ExecStart=/home/bsmith/reuptime/.venv/bin/python /home/bsmith/reuptime/monitors/icmp/daemon.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target 

@@ -1,11 +1,13 @@
 import pytest
 import os
 import tempfile
-from app import app, get_db, init_db, init_rrd, setup_directories
+from app import app
+from db import get_db, init_db
+from utils import setup_directories
+from rrd_utils import init_rrd, update_rrd, get_rrd_path
 import rrdtool
 from datetime import datetime
 import sqlite3
-from rrd_utils import init_rrd, update_rrd, get_rrd_path
 import time
 
 @pytest.fixture
@@ -16,9 +18,8 @@ def app_with_db():
     app.config['DATABASE'] = 'test_uptime.db'
     
     # Create test database and tables
-    with app.app_context():
-        init_db()
-        setup_directories()  # Create RRD directory
+    init_db(app.config)
+    setup_directories(app.config)  # Create RRD directory
     
     yield app
     
@@ -69,11 +70,46 @@ def populate_rrd_with_test_data(host_id, app_config):
             os.remove(rrd_file)
         init_rrd(host_id, app_config)
     
-    # Generate test data points
+    # Get the current time
     current_time = int(time.time())
-    # Add data points for the last 24 hours (288 points at 5-minute intervals)
-    for i in range(288):
-        timestamp = current_time - (287 - i) * 300  # Start 24 hours ago
+    
+    # Check if the RRD file already has data
+    try:
+        last_update_info = rrdtool.lastupdate(rrd_file)
+        print(f"RRD last update before adding test data: {last_update_info}")
+        
+        # If there's already data, use the last update time + 300 seconds as our base
+        if last_update_info and 'date' in last_update_info:
+            last_update_timestamp = int(last_update_info['date'].timestamp())
+            
+            # Check if the last update time is in the future
+            if last_update_timestamp > current_time:
+                print(f"Last update time is in the future: {last_update_timestamp} > {current_time}")
+                # Use the last update time + 300 seconds as our base
+                base_timestamp = last_update_timestamp + 300
+                print(f"Using future last update timestamp + 300s as base: {base_timestamp}")
+            else:
+                # Use the last update time + 300 seconds as our base
+                base_timestamp = last_update_timestamp + 300
+                print(f"Using last update timestamp + 300s as base: {base_timestamp}")
+        else:
+            # Otherwise, use current time - 24 hours
+            base_timestamp = current_time - 86400
+            print(f"Using current time - 24h as base: {base_timestamp}")
+    except Exception as e:
+        print(f"Error getting last update, using current time - 24h: {str(e)}")
+        base_timestamp = current_time - 86400
+    
+    # Calculate how many points we can add (up to 24 hours worth at 5-minute intervals)
+    # If base_timestamp is in the future, we'll add fewer points
+    end_timestamp = max(current_time + 3600, base_timestamp + 86400)  # Either 1 hour in the future or 24 hours after base
+    num_points = min(288, (end_timestamp - base_timestamp) // 300)  # Max 288 points (24 hours at 5-minute intervals)
+    
+    print(f"Adding {num_points} data points from {base_timestamp} to {end_timestamp}")
+    
+    # Add data points
+    for i in range(num_points):
+        timestamp = base_timestamp + (i * 300)  # 5-minute intervals
         uptime = 100.0  # 100% uptime
         latency = 10.0  # 10ms latency
         try:
@@ -82,12 +118,12 @@ def populate_rrd_with_test_data(host_id, app_config):
             if not update_success:
                 print(f"Failed to update RRD at timestamp {timestamp}")
         except Exception as e:
-            print(f"Error updating RRD: {str(e)}")
+            print(f"Error updating RRD file: {str(e)}")
     
     # Verify the RRD file has data
     try:
         last_update = rrdtool.lastupdate(rrd_file)
-        print(f"RRD last update: {last_update}")
+        print(f"RRD last update after adding test data: {last_update}")
     except Exception as e:
         print(f"Error getting last update: {str(e)}")
     
@@ -99,42 +135,41 @@ def sample_host(app_with_db):
     """Create a sample host for testing."""
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    with app_with_db.app_context():
-        with app_with_db.get_db() as db:
-            cursor = db.execute('''
-                INSERT INTO hosts (
-                    aws_account_label, aws_account_id, aws_region,
-                    aws_instance_id, aws_instance_ip, aws_instance_name,
-                    is_active, last_check, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            ''', (
-                'Test Account',
-                '123456789012',
-                'us-east-1',
-                'i-1234567890abcdef0',
-                '192.168.1.1',
-                'test-instance',
-                1  # Set is_active to 1 (True)
-            ))
-            host_id = cursor.lastrowid
-            db.commit()
-            
-            # Get the inserted host with all fields
-            host = db.execute('SELECT * FROM hosts WHERE id = ?', (host_id,)).fetchone()
-            
-            # Initialize RRD database for the sample host and populate with test data
-            init_rrd(host_id, app_with_db.config)
-            populate_rrd_with_test_data(host_id, app_with_db.config)
-            
-            return {
-                'id': host_id,
-                'aws_account_label': 'Test Account',
-                'aws_account_id': '123456789012',
-                'aws_region': 'us-east-1',
-                'aws_instance_id': 'i-1234567890abcdef0',
-                'aws_instance_ip': '192.168.1.1',
-                'aws_instance_name': 'test-instance',
-                'is_active': 1,  # Add is_active to the returned dictionary
-                'last_check': host['last_check'],  # Add last_check from the database
-                'created_at': host['created_at']   # Add created_at from the database
-            } 
+    with get_db(app_with_db.config) as db:
+        cursor = db.execute('''
+            INSERT INTO hosts (
+                aws_account_label, aws_account_id, aws_region,
+                aws_instance_id, aws_instance_ip, aws_instance_name,
+                is_active, last_check, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ''', (
+            'Test Account',
+            '123456789012',
+            'us-east-1',
+            'i-1234567890abcdef0',
+            '192.168.1.1',
+            'test-instance',
+            1  # Set is_active to 1 (True)
+        ))
+        host_id = cursor.lastrowid
+        db.commit()
+        
+        # Get the inserted host with all fields
+        host = db.execute('SELECT * FROM hosts WHERE id = ?', (host_id,)).fetchone()
+        
+        # Initialize RRD database for the sample host and populate with test data
+        init_rrd(host_id, app_with_db.config)
+        populate_rrd_with_test_data(host_id, app_with_db.config)
+        
+        return {
+            'id': host_id,
+            'aws_account_label': 'Test Account',
+            'aws_account_id': '123456789012',
+            'aws_region': 'us-east-1',
+            'aws_instance_id': 'i-1234567890abcdef0',
+            'aws_instance_ip': '192.168.1.1',
+            'aws_instance_name': 'test-instance',
+            'is_active': 1,  # Add is_active to the returned dictionary
+            'last_check': host['last_check'],  # Add last_check from the database
+            'created_at': host['created_at']   # Add created_at from the database
+        } 

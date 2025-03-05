@@ -1,5 +1,5 @@
 // Function to create or update a chart
-function createOrUpdateChart(canvasId, hostId) {
+function createOrUpdateChart(canvasId, hostId, timeRange = '24h') {
     const ctx = document.getElementById(canvasId).getContext('2d');
     let chart = Chart.getChart(canvasId);
     
@@ -7,8 +7,8 @@ function createOrUpdateChart(canvasId, hostId) {
         chart.destroy();
     }
     
-    // Fetch data from API
-    fetch(`/api/metrics/${hostId}`)
+    // Fetch data from API with time range parameter
+    fetch(`/api/metrics/${hostId}?range=${timeRange}&t=${Date.now()}`)
         .then(response => response.json())
         .then(data => {
             chart = new Chart(ctx, {
@@ -54,9 +54,14 @@ function createOrUpdateChart(canvasId, hostId) {
 }
 
 // Function to refresh chart data periodically
-function startChartRefresh(canvasId, hostId, interval = 300000) { // 5 minutes default
-    createOrUpdateChart(canvasId, hostId);
-    setInterval(() => createOrUpdateChart(canvasId, hostId), interval);
+function startChartRefresh(canvasId, hostId, interval = 300000, timeRange = '24h') { // 5 minutes default
+    createOrUpdateChart(canvasId, hostId, timeRange);
+    return setInterval(() => createOrUpdateChart(canvasId, hostId, timeRange), interval);
+}
+
+// Function to stop chart refresh
+function stopChartRefresh(intervalId) {
+    clearInterval(intervalId);
 }
 
 // Function to set up graph modals for all hosts
@@ -68,11 +73,78 @@ function setupGraphModals() {
     graphButtons.forEach(button => {
         const hostId = button.getAttribute('data-host-id');
         const chartId = `metricsChart${hostId}`;
+        let refreshIntervalId = null;
         
         button.addEventListener('click', function() {
             // Wait for the modal to be shown before creating the chart
             setTimeout(() => {
-                createOrUpdateChart(chartId, hostId);
+                // Get the modal elements
+                const modal = document.getElementById(`graphModal${hostId}`);
+                const timeRangeSelect = document.getElementById(`timeRange${hostId}`);
+                const refreshIntervalSelect = document.getElementById(`refreshInterval${hostId}`);
+                const autoRefreshToggle = document.getElementById(`autoRefresh${hostId}`);
+                
+                // Initial chart creation
+                createOrUpdateChart(chartId, hostId, timeRangeSelect.value);
+                
+                // Set up event listeners for controls
+                timeRangeSelect.addEventListener('change', function() {
+                    createOrUpdateChart(chartId, hostId, this.value);
+                    
+                    // If auto-refresh is enabled, restart it with the new time range
+                    if (autoRefreshToggle.checked) {
+                        if (refreshIntervalId) {
+                            stopChartRefresh(refreshIntervalId);
+                        }
+                        const interval = parseInt(refreshIntervalSelect.value);
+                        refreshIntervalId = startChartRefresh(chartId, hostId, interval, timeRangeSelect.value);
+                    }
+                });
+                
+                refreshIntervalSelect.addEventListener('change', function() {
+                    // If auto-refresh is enabled, restart it with the new interval
+                    if (autoRefreshToggle.checked) {
+                        if (refreshIntervalId) {
+                            stopChartRefresh(refreshIntervalId);
+                        }
+                        const interval = parseInt(this.value);
+                        refreshIntervalId = startChartRefresh(chartId, hostId, interval, timeRangeSelect.value);
+                    }
+                });
+                
+                autoRefreshToggle.addEventListener('change', function() {
+                    if (this.checked) {
+                        // Start auto-refresh
+                        const interval = parseInt(refreshIntervalSelect.value);
+                        refreshIntervalId = startChartRefresh(chartId, hostId, interval, timeRangeSelect.value);
+                        refreshIntervalSelect.disabled = false;
+                    } else {
+                        // Stop auto-refresh
+                        if (refreshIntervalId) {
+                            stopChartRefresh(refreshIntervalId);
+                            refreshIntervalId = null;
+                        }
+                        refreshIntervalSelect.disabled = true;
+                    }
+                });
+                
+                // Clean up when modal is hidden
+                modal.addEventListener('hidden.bs.modal', function() {
+                    if (refreshIntervalId) {
+                        stopChartRefresh(refreshIntervalId);
+                        refreshIntervalId = null;
+                    }
+                    
+                    // Reset auto-refresh toggle
+                    if (autoRefreshToggle) {
+                        autoRefreshToggle.checked = false;
+                    }
+                    
+                    // Reset refresh interval select
+                    if (refreshIntervalSelect) {
+                        refreshIntervalSelect.disabled = true;
+                    }
+                });
             }, 100);
         });
     });
@@ -119,7 +191,7 @@ function initializeHostsTable() {
                         <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#hostDetails${host.id}">
                             Details
                         </button>
-                        <a href="/metrics/${host.id}" class="btn btn-sm btn-info">Metrics</a>
+                        <a href="/api/metrics/${host.id}" class="btn btn-sm btn-info">Metrics</a>
                         <button type="button" class="btn btn-sm btn-primary graph-btn" data-bs-toggle="modal" data-bs-target="#graphModal${host.id}" data-host-id="${host.id}">
                             Graph
                         </button>
@@ -203,9 +275,47 @@ function initializeHostsTable() {
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="timeRange${host.id}" class="form-label">Time Range:</label>
+                                        <select id="timeRange${host.id}" class="form-select">
+                                            <option value="5m">5 Minutes</option>
+                                            <option value="30m">30 Minutes</option>
+                                            <option value="1h">1 Hour</option>
+                                            <option value="6h">6 Hours</option>
+                                            <option value="24h" selected>24 Hours</option>
+                                            <option value="3d">3 Days</option>
+                                            <option value="1w">1 Week</option>
+                                            <option value="2w">2 Weeks</option>
+                                            <option value="1mo">1 Month</option>
+                                            <option value="3mo">3 Months</option>
+                                            <option value="6mo">6 Months</option>
+                                            <option value="1y">1 Year</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="refreshInterval${host.id}" class="form-label">Refresh Interval:</label>
+                                        <select id="refreshInterval${host.id}" class="form-select" disabled>
+                                            <option value="5000">5 Seconds</option>
+                                            <option value="15000">15 Seconds</option>
+                                            <option value="30000">30 Seconds</option>
+                                            <option value="60000">1 Minute</option>
+                                            <option value="300000" selected>5 Minutes</option>
+                                            <option value="600000">10 Minutes</option>
+                                            <option value="1800000">30 Minutes</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="autoRefresh${host.id}">
+                                            <label class="form-check-label" for="autoRefresh${host.id}">Auto Refresh</label>
+                                        </div>
+                                    </div>
+                                </div>
                                 <canvas id="metricsChart${host.id}"></canvas>
                             </div>
                             <div class="modal-footer">
+                                <button type="button" class="btn btn-primary" onclick="createOrUpdateChart('metricsChart${host.id}', ${host.id}, document.getElementById('timeRange${host.id}').value)">Refresh Now</button>
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                             </div>
                         </div>
@@ -446,6 +556,47 @@ function initializeDarkMode() {
     }
 }
 
+// Function to show a toast notification
+function showToast(message, type = 'success') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create a unique ID for the toast
+    const toastId = 'toast-' + Date.now();
+    
+    // Create toast HTML
+    const toastHTML = `
+    <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-${type} text-white">
+            <strong class="me-auto">Notification</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
+        </div>
+    </div>
+    `;
+    
+    // Add toast to container
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    // Initialize and show the toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+    toast.show();
+    
+    // Remove toast from DOM after it's hidden
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
 // Initialize the page when the DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     initializeHostsTable();
@@ -458,5 +609,24 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             undoDelete();
         });
+    }
+    
+    // Check for host_added parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const hostAdded = urlParams.get('host_added');
+    if (hostAdded) {
+        showToast(`Host "${hostAdded}" added successfully!`, 'success');
+        // Remove the parameter from the URL without reloading the page
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+    
+    // Check for hosts_imported parameter in URL
+    const hostsImported = urlParams.get('hosts_imported');
+    if (hostsImported) {
+        showToast(`${hostsImported} hosts imported successfully!`, 'success');
+        // Remove the parameter from the URL without reloading the page
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
     }
 }); 

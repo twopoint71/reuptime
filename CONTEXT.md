@@ -1,7 +1,7 @@
 # Project Context
 
 ## Overview
-This is a Flask web application called "ReUptime" for monitoring AWS instance uptime. The application uses SQLite for data storage and RRDtool for metrics collection and visualization. It provides a web-based interface for managing hosts, monitoring their uptime, and visualizing metrics.
+This is a Flask web application called "ReUptime" for monitoring AWS instance uptime. The application uses SQLite for data storage and RRDtool for metrics collection. It provides a web-based interface for managing hosts, monitoring their uptime, and visualizing metrics using Chart.js.
 
 ## Architecture Decisions
 
@@ -11,6 +11,24 @@ This is a Flask web application called "ReUptime" for monitoring AWS instance up
 - All HTML is stored in the static directory and served directly
 - API endpoints return JSON data that is consumed by client-side JavaScript
 - This approach provides a cleaner separation between frontend and backend
+
+### ICMP Monitor Daemon
+- A separate daemon process handles host monitoring via ICMP ping
+- The daemon runs independently from the web application
+- It checks all hosts every 5 seconds and updates the database and RRD files
+- This approach offloads monitoring from the web application, improving responsiveness
+- The daemon can be run as a systemd service or controlled via the admin interface
+- The daemon includes database initialization to ensure it can run independently
+- PID file and status file management for reliable daemon control and status reporting
+
+### Admin Interface
+- A dedicated admin page for system management
+- Real-time monitoring of daemon status
+- Controls for starting and stopping the daemon
+- System information display
+- Monitor log viewer
+- Dark mode support
+- Responsive design using Bootstrap 5
 
 ## Key Components
 
@@ -37,12 +55,15 @@ This is a Flask web application called "ReUptime" for monitoring AWS instance up
 - Metrics collected:
   - Uptime percentage (0-100%)
   - Latency (in milliseconds)
-- Data resolution: 5-minute intervals
+- Data resolution: 5-second intervals
 - Data retention periods:
   - Daily data: 288 points (5-minute intervals)
   - Weekly data: 168 points (1-hour intervals)
   - Monthly data: 720 points (30-minute intervals)
   - Yearly data: 365 points (1-day intervals)
+- Metrics are visualized using Chart.js in the frontend
+- The application supports different time ranges for metrics visualization (5 minutes to 1 year)
+- Auto-refresh functionality for real-time metrics updates
 
 ### Frontend
 - Uses Bootstrap 5 for responsive UI components
@@ -52,6 +73,35 @@ This is a Flask web application called "ReUptime" for monitoring AWS instance up
 - Modal dialogs for host details, metrics graphs, and management actions
 - All HTML is static (no server-side templating)
 - Client-side rendering of dynamic content
+- Bootstrap Icons for UI elements
+- Responsive design for mobile and desktop
+
+### ICMP Monitor
+- Python daemon that runs independently from the web application
+- Connects to the SQLite database to retrieve host information
+- Pings each host every 5 seconds using ICMP
+- Updates host status in the database
+- Records uptime and latency metrics in RRD database
+- Logs all activity to a log file
+- Can be run as a systemd service or controlled via the admin interface
+- Handles errors gracefully and continues monitoring
+- Comprehensive test suite for all functionality
+- Command-line interface for start, stop, and status operations
+- PID file management for reliable daemon control
+- Status file with JSON data for real-time status reporting
+- Database initialization to ensure it can run independently
+
+### API Endpoints
+- `/api/hosts` - Get all hosts
+- `/api/deleted_hosts` - Get all deleted hosts
+- `/api/metrics/<host_id>` - Get metrics for a specific host with optional time range parameter
+- `/api/restore_host` - Restore a deleted host
+- `/api/permanently_delete_host` - Permanently delete a host
+- `/api/monitor_log` - Get the monitor log
+- `/api/daemon/status` - Get the daemon status
+- `/api/daemon/start` - Start the daemon
+- `/api/daemon/stop` - Stop the daemon
+- `/api/system_info` - Get system information
 
 ### Dependencies
 - Flask: Web framework
@@ -59,6 +109,7 @@ This is a Flask web application called "ReUptime" for monitoring AWS instance up
 - python-dotenv: For environment variable management
 - Chart.js: For interactive metrics visualization
 - Bootstrap 5: For UI components
+- Bootstrap Icons: For UI icons
 
 ## Setup Instructions
 
@@ -90,6 +141,11 @@ wsl -u bsmith bash -ic "cd /home/bsmith/reuptime && source .venv/bin/activate &&
 6. Run the application:
 ```bash
 wsl -u bsmith bash -ic "cd /home/bsmith/reuptime && source .venv/bin/activate && python app.py"
+```
+
+7. Set up the ICMP monitor daemon (optional):
+```bash
+wsl -u bsmith bash -ic "cd /home/bsmith/reuptime && sudo bash fix_permissions_sudo.sh && python monitors/icmp/daemon.py --action start"
 ```
 
 ## Database Operations
@@ -151,11 +207,46 @@ init_rrd(host_id, app.config)
 # Update RRD with new metrics
 update_rrd(rrd_file, timestamp, uptime_value, latency_value)
 
-# Fetch RRD data for visualization
-rrd_data = fetch_rrd_data(rrd_file)
+# Fetch RRD data for visualization with optional time range
+rrd_data = fetch_rrd_data(rrd_file, start_time=None, end_time=None)
 
 # Format RRD data for Chart.js
 chart_data = format_rrd_data_for_chart(rrd_data)
+```
+
+## Daemon Control
+The application provides multiple ways to control the ICMP monitor daemon:
+
+### Command Line
+```bash
+# Start the daemon
+python monitors/icmp/daemon.py --action start
+
+# Stop the daemon
+python monitors/icmp/daemon.py --action stop
+
+# Check daemon status
+python monitors/icmp/daemon.py --action status
+```
+
+### Admin Interface
+The admin interface at `/static/admin.html` provides a user-friendly way to:
+- Start the daemon
+- Stop the daemon
+- Check daemon status
+- View the monitor log
+- View system information
+
+### API Endpoints
+```python
+# Get daemon status
+response = requests.get('/api/daemon/status')
+
+# Start the daemon
+response = requests.post('/api/daemon/start')
+
+# Stop the daemon
+response = requests.post('/api/daemon/stop')
 ```
 
 ## Testing
@@ -171,6 +262,52 @@ The project uses pytest fixtures for test setup and teardown, including:
 - Sample host data for testing host operations
 - Sample CSV data for testing import functionality
 
+### ICMP Monitor Tests
+Run ICMP monitor tests with:
+```bash
+wsl -u bsmith bash -ic "cd /home/bsmith/reuptime && bash monitors/icmp/run_tests.sh"
+```
+
+The ICMP monitor tests include:
+- Testing the daemon's ability to check host status
+- Testing the daemon's ability to update the database
+- Testing the daemon's ability to update RRD files
+- Testing the daemon's error handling
+- Testing the daemon's threading functionality
+- Testing the daemon's signal handling
+- Testing the daemon's main loop
+- Testing the daemon's PID file management
+- Testing the daemon's status file management
+- Testing the daemon's command-line interface
+
+### API Tests
+The API tests include:
+- Testing all API endpoints
+- Testing error handling
+- Testing response formats
+- Testing authentication (if implemented)
+- Testing the daemon control API endpoints
+
+## Test Coverage Gaps
+
+The following areas need additional test coverage:
+
+1. **Daemon Control API Endpoints**:
+   - `/api/daemon/status`
+   - `/api/daemon/start`
+   - `/api/daemon/stop`
+   - `/api/system_info`
+
+2. **Enhanced Daemon Functionality**:
+   - `init_db()` function
+   - `update_status()` function
+   - `cleanup()` function
+   - Command-line arguments handling
+
+3. **Admin Interface**:
+   - HTML structure
+   - JavaScript functionality
+
 ## File Structure
 ```
 reuptime/
@@ -182,7 +319,17 @@ reuptime/
 ├── .python-version        # pyenv Python version file
 ├── pytest.ini             # pytest configuration
 ├── conftest.py            # pytest fixtures
+├── CONTEXT.md             # Project context and documentation
+├── fix_permissions.sh     # Script to fix permissions
+├── fix_permissions_sudo.sh # Script to fix permissions with sudo
 ├── rrd/                   # RRD database files
+├── monitors/              # Monitoring daemons
+│   └── icmp/              # ICMP ping monitor
+│       ├── daemon.py      # ICMP monitor daemon
+│       ├── daemon.pid     # PID file for the daemon
+│       ├── daemon_status.json # Status file for the daemon
+│       ├── icmp_monitor.log # Log file for the daemon
+│       └── README.md      # Documentation for the ICMP monitor
 ├── static/                # Static files served directly (no templating)
 │   ├── css/
 │   │   └── style.css      # Custom CSS styles
@@ -191,74 +338,29 @@ reuptime/
 │   │   └── deleted_hosts.js # JavaScript for deleted hosts page
 │   ├── index.html         # Main dashboard HTML
 │   ├── deleted_hosts.html # Deleted hosts page HTML
-│   └── graphs/            # Generated graph images
+│   ├── monitor_log.html   # Monitor log page HTML
+│   ├── admin.html         # Admin interface HTML
 └── tests/
     ├── conftest.py        # Test fixtures
     ├── test_app.py        # Application tests
-    └── test_charts.py     # Chart generation tests
+    ├── test_charts.py     # Chart generation tests
+    └── test_icmp_monitor.py # ICMP monitor tests
 ```
 
 ## Environment
 - Operating System: Windows 10 (WSL Debian)
-- Shell: WSL (not PowerShell)
-- Python Version: 3.11.11 (via pyenv)
-- Virtual Environment: `.venv`
+- Python Version: 3.11.11
+- Database: SQLite 3
+- Web Server: Flask Development Server (for production, use Gunicorn or uWSGI)
+- Browser Support: Modern browsers (Chrome, Firefox, Safari, Edge)
 
-## Important Notes
-1. All terminal commands must be run in WSL using `wsl -u bsmith bash -ic "command"`
-2. pyenv is available and should be used for Python version management
-3. The project uses SQLite3 for database storage
-4. RRDTool is required for metrics storage and graph generation
-5. The application runs on Flask with debug mode enabled
-6. Host status is checked using ICMP ping
-7. The application supports both light and dark themes
-8. No server-side templating is used - all HTML is static and served directly
-
-## Key Dependencies
-- Flask 3.0.2
-- Flask-SQLAlchemy 3.1.1
-- python-dotenv 1.0.1
-- Werkzeug 3.0.1
-- pytest 8.0.0
-- pytest-cov 4.1.0
-- pytest-mock 3.12.0
-- rrdtool (system package)
-
-## Features
-1. **Host Management**: Add, edit, and delete AWS instances
-2. **CSV Import**: Bulk import hosts from a CSV file
-3. **Uptime Monitoring**: Check host availability using ICMP ping
-4. **Metrics Collection**: Track uptime percentage and latency
-5. **Visualization**: View metrics with both RRDtool static graphs and interactive Chart.js charts
-6. **Host History**: View and restore deleted hosts
-7. **Dark/Light Theme**: Toggle between dark and light UI themes
-8. **Responsive Design**: Mobile-friendly interface using Bootstrap 5
-9. **Soft Delete**: Hosts are moved to a deleted_hosts table rather than permanently deleted
-10. **Undo Delete**: Ability to restore deleted hosts
-
-## API Endpoints
-- `/` - Main dashboard
-- `/deleted_hosts` - View deleted hosts
-- `/import` - CSV import endpoint (POST)
-- `/metrics/<host_id>` - Get host metrics
-- `/graph/<host_id>` - Get host uptime graph
-- `/add_host` - Add a new host (POST)
-- `/check_host/<host_id>` - Check a host's status (POST)
-- `/delete_host/<host_id>` - Delete a host (POST)
-- `/undo_delete/<host_id>` - Restore a deleted host (POST)
-- `/host/<host_id>` - Host details page
-- `/api/metrics/<host_id>` - JSON API for metrics data
-- `/api/hosts` - JSON API for all hosts
-- `/api/deleted_hosts` - JSON API for deleted hosts
-- `/api/restore_host` - Restore a deleted host (POST)
-- `/api/permanently_delete_host` - Permanently delete a host (POST)
-
-## User Interface
-The application provides a clean, responsive user interface with the following key elements:
-1. Navigation bar with links to main dashboard and deleted hosts
-2. Host management buttons (Add Host, Import Hosts)
-3. Hosts table showing key information and status
-4. Modal dialogs for host details, metrics graphs, and management actions
-5. Toast notifications for actions like deletion with undo option
-6. Interactive charts for visualizing uptime metrics
-7. Responsive design that works on desktop and mobile devices 
+## Future Improvements
+- Add user authentication and authorization
+- Add email notifications for down hosts
+- Add more monitoring types (HTTP, TCP, etc.)
+- Add more visualization options
+- Add host grouping and tagging
+- Add scheduled reports
+- Add API documentation using Swagger/OpenAPI
+- Add more comprehensive test coverage
+- Add Docker support for easier deployment 

@@ -7,6 +7,7 @@ import time
 import sqlite3
 import argparse
 from app import init_db, setup_directories
+from rrd_utils import get_last_update
 
 def generate_hosts(refresh_existing=False, num_hosts=10):
     """
@@ -138,14 +139,33 @@ def update_host_metrics(host_id, host_name, is_active):
             print(f"Warning: RRD database for host {host_id} is not ready: {str(e)}")
             return
 
-        # Get current time after database is ready
-        base_timestamp = int((time.time() - 86400) / 300) * 300  # Round to nearest 5 minutes
+        # Get the last update time from the RRD file
+        last_update_info = get_last_update(rrd_file)
+        
+        if last_update_info:
+            # Use the last update timestamp as the base for new data points
+            # Add 300 seconds (5 minutes) to avoid timestamp conflicts
+            base_timestamp = last_update_info['timestamp'] + 300
+            print(f"Using last update timestamp as base: {base_timestamp} for host {host_id}")
+        else:
+            # If no last update info, use current time minus 24 hours
+            base_timestamp = int((time.time() - 86400) / 300) * 300  # Round to nearest 5 minutes
+            print(f"No last update info, using time-24h as base: {base_timestamp} for host {host_id}")
 
         # Generate data points in memory first
         data_points = []
 
         # Generate timestamps in chronological order, starting from base_timestamp
-        timestamps = [base_timestamp + (j * 300) for j in range(288)]
+        # Make sure we don't generate timestamps in the future
+        current_time = int(time.time())
+        end_timestamp = min(current_time - 300, base_timestamp + (287 * 300))  # Ensure we don't go into the future
+        
+        # Generate up to 288 points (24 hours at 5-minute intervals) or fewer if we hit current time
+        timestamps = []
+        timestamp = base_timestamp
+        while timestamp <= end_timestamp and len(timestamps) < 288:
+            timestamps.append(timestamp)
+            timestamp += 300
 
         # Generate data points with timestamps in order
         for timestamp in timestamps:
@@ -157,15 +177,18 @@ def update_host_metrics(host_id, host_name, is_active):
 
         # Write all data points to RRD file in chronological order
         try:
-            # First, try to update with the first data point to establish the base
-            first_timestamp, first_uptime, first_latency = data_points[0]
-            rrdtool.update(rrd_file, f'{first_timestamp}:{first_uptime}:{first_latency}')
+            if data_points:
+                # First, try to update with the first data point to establish the base
+                first_timestamp, first_uptime, first_latency = data_points[0]
+                rrdtool.update(rrd_file, f'{first_timestamp}:{first_uptime}:{first_latency}')
 
-            # Then update with the rest of the data points
-            for timestamp, uptime, latency in data_points[1:]:
-                rrdtool.update(rrd_file, f'{timestamp}:{uptime}:{latency}')
-            
-            print(f"Updated metrics for host {host_id} ({host_name})")
+                # Then update with the rest of the data points
+                for timestamp, uptime, latency in data_points[1:]:
+                    rrdtool.update(rrd_file, f'{timestamp}:{uptime}:{latency}')
+                
+                print(f"Updated metrics for host {host_id} ({host_name}) with {len(data_points)} data points")
+            else:
+                print(f"No new data points to add for host {host_id} ({host_name})")
         except rrdtool.OperationalError as e:
             print(f"Warning: Could not update RRD file for host {host_id}: {str(e)}")
 

@@ -1,43 +1,86 @@
-# Uptime Monitor
+# ReUptime
 
-A project to monitor host uptime via ICMP.
+A lightweight, self-hosted uptime monitoring solution for tracking the availability of your servers and services.
 
 ## Features
 
-- **Host Management**: Standard CRUD operations on a per-host basis via a browser-based UI
-- **CSV Import**: Bulk import hosts from a CSV file.
-- **Uptime Monitoring**: Check host availability using ICMP (ping)
-- **Metrics Collection**: Track uptime statistics (success rate, latency) for each host. Stores up to 13 months of metrics per host.
-- **Visualization**: View uptime metrics with RRDTool-generated graphs
-- **Persistent Storage**: Store host data in SQLite3 database
-- **Time Series Data**: Store metrics data in RRDTool databases
-- **Dark Mode**: Toggle between light and dark themes for better visibility in different environments
+- **Simple Host Monitoring**: Track uptime and response time for servers and services
+- **Real-time Metrics**: View performance metrics with interactive charts
+- **Alerting**: Get notified when hosts go down or come back online
+- **Historical Data**: Store and visualize historical uptime and performance data
+- **Responsive UI**: Mobile-friendly interface with dark mode support
+- **Low Resource Usage**: Minimal system requirements for the monitoring daemon
+- **API-First Design**: RESTful API for all functionality
 
-#### Importing Hosts from CSV
+## Quick Start
 
-1. Click the "Import Hosts" button
-2. Prepare a CSV file with the following columns (in order):
-   - AWS Account Label
-   - AWS Account ID
-   - AWS Region
-   - AWS Instance ID
-   - AWS Instance IP Address
-   - AWS Instance Name
-3. Select the CSV file
-4. Check "File has header row" if your CSV includes a header
-5. Click "Import" to upload and process the file
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/reuptime.git
+   cd reuptime
+   ```
 
-### Viewing Metrics
+2. Set up a virtual environment:
+   ```
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
 
-The metrics section displays uptime statistics for each host:
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
 
-- Uptime percentage
-- Average latency
-- Number of checks
-- Number of failures
-- Last downtime
+4. Initialize the database:
+   ```
+   flask --app app init-db
+   ```
 
-You can select different time periods from the dropdown menu to view metrics for different timeframes.
+5. Start the application:
+   ```
+   flask --app app run
+   ```
+
+6. Start the monitoring daemon:
+   ```
+   ./monitors/icmp/control.sh start
+   ```
+
+7. Access the web interface at http://localhost:5000
+
+## Architecture
+
+ReUptime consists of two main components:
+
+1. **Web Application**: Flask-based web interface and API for managing hosts and viewing metrics
+2. **Monitoring Daemon**: Background process that performs regular checks on hosts
+
+### Monitoring Daemon
+
+The monitoring daemon runs in the background and performs ICMP (ping) checks on configured hosts at regular intervals. It stores the results in RRD (Round Robin Database) files for efficient time-series data storage.
+
+You can control the daemon using the provided control script:
+
+## Documentation
+
+For more detailed documentation, please see the [docs](./docs) directory:
+
+- [Architecture](./docs/architecture.md)
+- [API Reference](./docs/api-reference.md)
+- [Daemon Control](./docs/daemon-control.md)
+- [Database Schema](./docs/database-schema.md)
+- [Frontend Guide](./docs/frontend-guide.md)
+
+## Tips
+If the ping service is run in user space, it may fail due to permissions.
+Check if cap_net_raw is available with
+
+    getcap /bin/ping
+
+If cap_net_raw permissions are not available, try the following command to allow the permission in user space.
+
+	sudo setcap cap_net_raw+p /bin/ping
+
 
 ## License
 
