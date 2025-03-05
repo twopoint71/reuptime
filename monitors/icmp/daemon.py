@@ -36,7 +36,7 @@ logger = logging.getLogger('icmp_monitor')
 
 # Global variables
 running = True
-db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../uptime.db'))
+db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../instance/reuptime.db'))
 pid_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'daemon.pid'))
 status_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'daemon_status.json'))
 app_config = {
@@ -61,12 +61,12 @@ def init_db():
             db.execute('''
                 CREATE TABLE IF NOT EXISTS hosts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    aws_account_label TEXT,
-                    aws_account_id TEXT,
-                    aws_region TEXT,
-                    aws_instance_id TEXT,
-                    aws_instance_ip TEXT,
-                    aws_instance_name TEXT,
+                    account_label TEXT,
+                    account_id TEXT,
+                    region TEXT,
+                    host_id TEXT,
+                    host_ip_address TEXT,
+                    host_name TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_check TIMESTAMP,
                     is_active INTEGER DEFAULT 1
@@ -77,12 +77,12 @@ def init_db():
             db.execute('''
                 CREATE TABLE IF NOT EXISTS deleted_hosts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    aws_account_label TEXT,
-                    aws_account_id TEXT,
-                    aws_region TEXT,
-                    aws_instance_id TEXT,
-                    aws_instance_ip TEXT,
-                    aws_instance_name TEXT,
+                    account_label TEXT,
+                    account_id TEXT,
+                    region TEXT,
+                    host_id TEXT,
+                    host_ip_address TEXT,
+                    host_name TEXT,
                     created_at TIMESTAMP,
                     last_check TIMESTAMP,
                     is_active INTEGER,
@@ -120,7 +120,7 @@ def check_host(host):
     try:
         # Perform ICMP check
         result = subprocess.run(
-            ['ping', '-c', '1', host['aws_instance_ip']],
+            ['ping', '-c', '1', host['host_ip_address']],
             capture_output=True, text=True, timeout=5
         )
         success = result.returncode == 0
@@ -147,29 +147,29 @@ def check_host(host):
         rrd_file = get_rrd_path(host['id'], app_config)
         if os.path.exists(rrd_file):
             update_rrd(rrd_file, int(time.time()), 100 if success else 0, latency)
-            logger.debug(f"Updated RRD for host {host['aws_instance_name']} (ID: {host['id']}): success={success}, latency={latency}ms")
+            logger.debug(f"Updated RRD for host {host['host_name']} (ID: {host['id']}): success={success}, latency={latency}ms")
         else:
-            logger.warning(f"RRD file not found for host {host['aws_instance_name']} (ID: {host['id']})")
+            logger.warning(f"RRD file not found for host {host['host_name']} (ID: {host['id']})")
             # Try to create the RRD file
             try:
                 from rrd_utils import init_rrd
-                logger.info(f"Attempting to create RRD file for host {host['aws_instance_name']} (ID: {host['id']})")
+                logger.info(f"Attempting to create RRD file for host {host['host_name']} (ID: {host['id']})")
                 init_rrd(host['id'], app_config)
-                logger.info(f"Successfully created RRD file for host {host['aws_instance_name']} (ID: {host['id']})")
+                logger.info(f"Successfully created RRD file for host {host['host_name']} (ID: {host['id']})")
                 # Update the newly created RRD file
                 update_rrd(rrd_file, int(time.time()), 100 if success else 0, latency)
             except Exception as e:
-                logger.error(f"Failed to create RRD file for host {host['aws_instance_name']} (ID: {host['id']}): {str(e)}")
+                logger.error(f"Failed to create RRD file for host {host['host_name']} (ID: {host['id']}): {str(e)}")
         
         # Log the result
         if success:
-            logger.info(f"Host {host['aws_instance_name']} ({host['aws_instance_ip']}) is UP with latency {latency}ms")
+            logger.info(f"Host {host['host_name']} ({host['host_ip_address']}) is UP with latency {latency}ms")
         else:
-            logger.warning(f"Host {host['aws_instance_name']} ({host['aws_instance_ip']}) is DOWN")
+            logger.warning(f"Host {host['host_name']} ({host['host_ip_address']}) is DOWN")
         
         return success, latency
     except subprocess.TimeoutExpired:
-        logger.warning(f"Ping timeout for host {host['aws_instance_name']} (ID: {host['id']})")
+        logger.warning(f"Ping timeout for host {host['host_name']} (ID: {host['id']})")
         with get_db() as db:
             db.execute('''
                 UPDATE hosts 
@@ -185,7 +185,7 @@ def check_host(host):
         
         return False, 1000
     except Exception as e:
-        logger.error(f"Error checking host {host['aws_instance_name']} (ID: {host['id']}): {str(e)}")
+        logger.error(f"Error checking host {host['host_name']} (ID: {host['id']}): {str(e)}")
         with get_db() as db:
             db.execute('''
                 UPDATE hosts 

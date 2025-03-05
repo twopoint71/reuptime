@@ -23,7 +23,7 @@ def generate_hosts(refresh_existing=False, num_hosts=10):
         init_db()
         setup_directories()
         
-        # AWS regions
+        # regions (use popular cloud provider regions)
         regions = ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-2', 'sa-east-1']
 
         # Example account labels
@@ -38,11 +38,11 @@ def generate_hosts(refresh_existing=False, num_hosts=10):
                 
                 # If we have enough hosts already, just update their metrics
                 if existing_count >= num_hosts:
-                    hosts = db.execute('SELECT id, aws_instance_name, is_active FROM hosts').fetchall()
+                    hosts = db.execute('SELECT id, host_name, is_active FROM hosts').fetchall()
                     print(f"Refreshing metrics for {len(hosts)} existing hosts")
                     
                     for host in hosts:
-                        update_host_metrics(host['id'], host['aws_instance_name'], bool(host['is_active']))
+                        update_host_metrics(host['id'], host['host_name'], bool(host['is_active']))
                     
                     db.commit()
                     print(f"Successfully refreshed metrics for {len(hosts)} existing hosts!")
@@ -61,7 +61,7 @@ def generate_hosts(refresh_existing=False, num_hosts=10):
             # Generate new hosts if needed
             if hosts_to_add > 0:
                 for i in range(hosts_to_add):
-                    # Generate random AWS account ID (12 digits)
+                    # Generate random account ID (12 digits)
                     account_id = ''.join([str(random.randint(0, 9)) for _ in range(12)])
 
                     # Generate random instance ID
@@ -82,8 +82,8 @@ def generate_hosts(refresh_existing=False, num_hosts=10):
 
                     cursor = db.execute('''
                         INSERT INTO hosts (
-                            aws_account_label, aws_account_id, aws_region,
-                            aws_instance_id, aws_instance_ip, aws_instance_name,
+                            account_label, account_id, region,
+                            host_id, host_ip_address, host_name,
                             is_active, last_check, created_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (
@@ -107,12 +107,12 @@ def generate_hosts(refresh_existing=False, num_hosts=10):
             
             # If we're refreshing, also update metrics for existing hosts
             if refresh_existing and existing_count > 0:
-                hosts = db.execute('SELECT id, aws_instance_name, is_active FROM hosts LIMIT ?', 
+                hosts = db.execute('SELECT id, host_name, is_active FROM hosts LIMIT ?', 
                                   (existing_count,)).fetchall()
                 print(f"Refreshing metrics for {len(hosts)} existing hosts")
                 
                 for host in hosts:
-                    update_host_metrics(host['id'], host['aws_instance_name'], bool(host['is_active']))
+                    update_host_metrics(host['id'], host['host_name'], bool(host['is_active']))
                 
                 db.commit()
                 print(f"Successfully refreshed metrics for {len(hosts)} existing hosts!")

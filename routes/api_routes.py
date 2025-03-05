@@ -122,8 +122,8 @@ def register_api_routes(app):
             
             # Ensure all required fields are present
             required_fields = [
-                'id', 'aws_account_label', 'aws_account_id', 'aws_region',
-                'aws_instance_id', 'aws_instance_ip', 'aws_instance_name',
+                'id', 'account_label', 'account_id', 'region',
+                'host_id', 'host_ip_address', 'host_name',
                 'created_at', 'last_check', 'is_active', 'deleted_at'
             ]
             

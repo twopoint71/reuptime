@@ -81,6 +81,9 @@ If cap_net_raw permissions are not available, try the following command to allow
 
 	sudo setcap cap_net_raw+p /bin/ping
 
+Use this header CSV file imports:
+
+    "Account Label","Account Id","Region","Host Id","Host IP Address","Hostname"
 
 ## License
 

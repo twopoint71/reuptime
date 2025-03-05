@@ -83,7 +83,7 @@ def check_host(host, config):
     
     try:
         # Perform ICMP check
-        result = subprocess.run(['ping', '-c', '1', host['aws_instance_ip']],
+        result = subprocess.run(['ping', '-c', '1', host['host_ip_address']],
                               capture_output=True, text=True)
         success = result.returncode == 0
         
@@ -112,7 +112,7 @@ def check_host(host, config):
         
         return success
     except Exception as e:
-        print(f"Error checking host {host['aws_instance_name']}: {str(e)}")
+        print(f"Error checking host {host['host_name']}: {str(e)}")
         with get_db(config) as db:
             db.execute('''
                 UPDATE hosts 

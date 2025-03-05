@@ -43,22 +43,22 @@ def register_host_routes(app):
             
             imported_count = 0
             host_ids = []
-            
+
             with get_db(app.config) as db:
                 for row in csv_data:
                     cursor = db.execute('''
                         INSERT INTO hosts (
-                            aws_account_label, aws_account_id, aws_region,
-                            aws_instance_id, aws_instance_ip, aws_instance_name,
+                            account_label, account_id, region,
+                            host_id, host_ip_address, host_name,
                             created_at, last_check, is_active
                         ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
                     ''', (
-                        row['AWS Account Label'],
-                        row['AWS Account ID'],
-                        row['AWS Region'],
-                        row['AWS Instance ID'],
-                        row['AWS Instance IP Address'],
-                        row['AWS Instance Name']
+                        row['Account Label'],
+                        row['Account Id'],
+                        row['Region'],
+                        row['Host Id'],
+                        row['Host IP Address'],
+                        row['Hostname']
                     ))
                     host_id = cursor.lastrowid
                     host_ids.append(host_id)
@@ -90,17 +90,13 @@ def register_host_routes(app):
         try:
             # Validate required fields
             required_fields = [
-                'aws_account_label', 'aws_account_id', 'aws_region',
-                'aws_instance_id', 'aws_instance_ip', 'aws_instance_name'
+                'account_label', 'account_id', 'region',
+                'host_id', 'host_ip_address', 'host_name'
             ]
             
             for field in required_fields:
                 if not request.form.get(field):
                     return jsonify({'error': f'{field} is required'}), 400
-            
-            # Validate AWS account ID format
-            if not request.form['aws_account_id'].isdigit() or len(request.form['aws_account_id']) != 12:
-                return jsonify({'error': 'AWS Account ID must be 12 digits'}), 400
             
             # Ensure directories exist
             setup_directories(app.config)
@@ -108,17 +104,17 @@ def register_host_routes(app):
             with get_db(app.config) as db:
                 cursor = db.execute('''
                     INSERT INTO hosts (
-                        aws_account_label, aws_account_id, aws_region,
-                        aws_instance_id, aws_instance_ip, aws_instance_name,
+                        account_label, account_id, region,
+                        host_id, host_ip_address, host_name,
                         created_at, last_check, is_active
                     ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
                 ''', (
-                    request.form['aws_account_label'],
-                    request.form['aws_account_id'],
-                    request.form['aws_region'],
-                    request.form['aws_instance_id'],
-                    request.form['aws_instance_ip'],
-                    request.form['aws_instance_name']
+                    request.form['account_label'],
+                    request.form['account_id'],
+                    request.form['region'],
+                    request.form['host_id'],
+                    request.form['host_ip_address'],
+                    request.form['host_name']
                 ))
                 host_id = cursor.lastrowid
                 db.commit()
@@ -135,7 +131,7 @@ def register_host_routes(app):
                     f.write(f"[ERROR] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Failed to create RRD file for host ID {host_id}: {str(e)}\n")
             
             # Redirect to the main page with a success parameter
-            return redirect(url_for('index', host_added=request.form['aws_instance_name']))
+            return redirect(url_for('index', host_added=request.form['host_name']))
         
         except Exception as e:
             print(f"Error adding host: {str(e)}")  # Add logging for debugging
@@ -167,17 +163,17 @@ def register_host_routes(app):
             # Store host data in deleted_hosts table
             db.execute('''
                 INSERT INTO deleted_hosts (
-                    aws_account_label, aws_account_id, aws_region,
-                    aws_instance_id, aws_instance_ip, aws_instance_name,
+                    account_label, account_id, region,
+                    host_id, host_ip_address, host_name,
                     created_at, last_check, is_active
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                host['aws_account_label'],
-                host['aws_account_id'],
-                host['aws_region'],
-                host['aws_instance_id'],
-                host['aws_instance_ip'],
-                host['aws_instance_name'],
+                host['account_label'],
+                host['account_id'],
+                host['region'],
+                host['host_id'],
+                host['host_ip_address'],
+                host['host_name'],
                 host['created_at'],
                 host['last_check'],
                 host['is_active']
@@ -218,17 +214,17 @@ def register_host_routes(app):
                 # Insert the host back into the hosts table
                 cursor = db.execute('''
                     INSERT INTO hosts (
-                        aws_account_label, aws_account_id, aws_region,
-                        aws_instance_id, aws_instance_ip, aws_instance_name,
+                        account_label, account_id, region,
+                        host_id, host_ip_address, host_name,
                         created_at, last_check, is_active
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    deleted_host['aws_account_label'],
-                    deleted_host['aws_account_id'],
-                    deleted_host['aws_region'],
-                    deleted_host['aws_instance_id'],
-                    deleted_host['aws_instance_ip'],
-                    deleted_host['aws_instance_name'],
+                    deleted_host['account_label'],
+                    deleted_host['account_id'],
+                    deleted_host['region'],
+                    deleted_host['host_id'],
+                    deleted_host['host_ip_address'],
+                    deleted_host['host_name'],
                     deleted_host['created_at'],
                     deleted_host['last_check'],
                     deleted_host['is_active']

@@ -43,12 +43,12 @@ def init_db(config):
         db.execute('''
             CREATE TABLE IF NOT EXISTS hosts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                aws_account_label TEXT,
-                aws_account_id TEXT,
-                aws_region TEXT,
-                aws_instance_id TEXT,
-                aws_instance_ip TEXT,
-                aws_instance_name TEXT,
+                account_label TEXT,
+                account_id TEXT,
+                region TEXT,
+                host_id TEXT,
+                host_ip_address TEXT,
+                host_name TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_check TIMESTAMP,
                 is_active INTEGER DEFAULT 1
@@ -59,12 +59,12 @@ def init_db(config):
         db.execute('''
             CREATE TABLE IF NOT EXISTS deleted_hosts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                aws_account_label TEXT,
-                aws_account_id TEXT,
-                aws_region TEXT,
-                aws_instance_id TEXT,
-                aws_instance_ip TEXT,
-                aws_instance_name TEXT,
+                account_label TEXT,
+                account_id TEXT,
+                region TEXT,
+                host_id TEXT,
+                host_ip_address TEXT,
+                host_name TEXT,
                 created_at TIMESTAMP,
                 last_check TIMESTAMP,
                 is_active INTEGER,

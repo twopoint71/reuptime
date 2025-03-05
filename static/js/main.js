@@ -178,9 +178,9 @@ function initializeHostsTable() {
                 
                 // Add host data to row
                 row.innerHTML = `
-                    <td>${host.aws_instance_name}</td>
-                    <td>${host.aws_instance_ip}</td>
-                    <td>${host.aws_region}</td>
+                    <td>${host.host_name}</td>
+                    <td>${host.host_ip_address}</td>
+                    <td>${host.region}</td>
                     <td>
                         <span class="badge ${host.is_active ? 'bg-success' : 'bg-danger'}">
                             ${host.is_active ? 'Active' : 'Inactive'}
@@ -212,28 +212,28 @@ function initializeHostsTable() {
                     <div class="modal-dialog">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="hostDetailsLabel${host.id}">Host Details: ${host.aws_instance_name}</h5>
+                                <h5 class="modal-title" id="hostDetailsLabel${host.id}">Host Details: ${host.host_name}</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
                                 <dl class="row">
                                     <dt class="col-sm-4">Account Label</dt>
-                                    <dd class="col-sm-8">${host.aws_account_label}</dd>
+                                    <dd class="col-sm-8">${host.account_label}</dd>
                                     
                                     <dt class="col-sm-4">Account ID</dt>
-                                    <dd class="col-sm-8">${host.aws_account_id}</dd>
+                                    <dd class="col-sm-8">${host.account_id}</dd>
                                     
                                     <dt class="col-sm-4">Region</dt>
-                                    <dd class="col-sm-8">${host.aws_region}</dd>
+                                    <dd class="col-sm-8">${host.region}</dd>
                                     
                                     <dt class="col-sm-4">Instance ID</dt>
-                                    <dd class="col-sm-8">${host.aws_instance_id}</dd>
+                                    <dd class="col-sm-8">${host.host_id}</dd>
                                     
                                     <dt class="col-sm-4">Instance IP</dt>
-                                    <dd class="col-sm-8">${host.aws_instance_ip}</dd>
+                                    <dd class="col-sm-8">${host.host_ip_address}</dd>
                                     
                                     <dt class="col-sm-4">Instance Name</dt>
-                                    <dd class="col-sm-8">${host.aws_instance_name}</dd>
+                                    <dd class="col-sm-8">${host.host_name}</dd>
                                     
                                     <dt class="col-sm-4">Status</dt>
                                     <dd class="col-sm-8">
@@ -250,7 +250,7 @@ function initializeHostsTable() {
                                 </dl>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-danger" onclick="deleteHost(${host.id}, '${host.aws_instance_name}')">Delete Host</button>
+                                <button type="button" class="btn btn-danger" onclick="deleteHost(${host.id}, '${host.host_name}')">Delete Host</button>
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                             </div>
                         </div>
@@ -271,7 +271,7 @@ function initializeHostsTable() {
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="graphModalLabel${host.id}">Metrics Graph: ${host.aws_instance_name}</h5>
+                                <h5 class="modal-title" id="graphModalLabel${host.id}">Metrics Graph: ${host.host_name}</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
@@ -354,8 +354,8 @@ function deleteHost(hostId, hostName) {
                     // Find the most recently deleted host that matches our original host ID
                     // We're looking for the host that was just deleted
                     const recentlyDeletedHost = deletedHosts.find(host => 
-                        host.aws_instance_id === data.deleted_host_data.aws_instance_id &&
-                        host.aws_instance_name === data.deleted_host_data.aws_instance_name
+                        host.host_id === data.deleted_host_data.host_id &&
+                        host.host_name === data.deleted_host_data.host_name
                     );
                     
                     if (recentlyDeletedHost) {

@@ -1,34 +1,63 @@
-# Project Context
+# ReUptime - Project Context
 
 ## Overview
-This is a Flask web application called "ReUptime" for monitoring AWS instance uptime. The application uses SQLite for data storage and RRDtool for metrics collection. It provides a web-based interface for managing hosts, monitoring their uptime, and visualizing metrics using Chart.js.
 
-## Architecture Decisions
+ReUptime is a lightweight, self-hosted uptime monitoring solution designed to track the availability and performance of servers and services. It provides a simple, intuitive interface for monitoring hosts and visualizing their performance metrics.
 
-### No Jinja Templates
-- The application does NOT use Jinja templates for rendering HTML
-- Instead, it serves static HTML files and uses client-side JavaScript to dynamically update the UI
-- All HTML is stored in the static directory and served directly
-- API endpoints return JSON data that is consumed by client-side JavaScript
-- This approach provides a cleaner separation between frontend and backend
+## Architecture
 
-### ICMP Monitor Daemon
-- A separate daemon process handles host monitoring via ICMP ping
-- The daemon runs independently from the web application
-- It checks all hosts every 5 seconds and updates the database and RRD files
-- This approach offloads monitoring from the web application, improving responsiveness
-- The daemon can be run as a systemd service or controlled via the admin interface
-- The daemon includes database initialization to ensure it can run independently
-- PID file and status file management for reliable daemon control and status reporting
+The project follows a modular architecture with the following components:
 
-### Admin Interface
-- A dedicated admin page for system management
-- Real-time monitoring of daemon status
-- Controls for starting and stopping the daemon
-- System information display
-- Monitor log viewer
-- Dark mode support
-- Responsive design using Bootstrap 5
+1. **Web Application (Flask)**
+   - Provides the user interface and API endpoints
+   - Manages host configuration and user settings
+   - Visualizes metrics and uptime data
+
+2. **Monitoring Daemon**
+   - Runs as a background process
+   - Performs regular ICMP (ping) checks on configured hosts
+   - Records metrics in RRD (Round Robin Database) files
+   - Updates host status in the database
+
+3. **Database (SQLite)**
+   - Stores host configuration
+   - Tracks host status and history
+   - Maintains daemon status information
+
+4. **RRD Storage**
+   - Efficiently stores time-series data for metrics
+   - Provides data consolidation for long-term storage
+   - Supports various time ranges for data visualization
+
+## Design Principles
+
+1. **Simplicity**: Focus on core functionality without unnecessary complexity
+2. **API-First**: All functionality is available through a RESTful API
+3. **Efficiency**: Minimal resource usage for monitoring and data storage
+4. **Reliability**: Robust error handling and recovery mechanisms
+5. **Extensibility**: Modular design allows for adding new monitoring types
+
+## Key Files and Directories
+
+- `app.py`: Main Flask application
+- `routes/`: API and web routes organized by functionality
+- `monitors/icmp/`: ICMP monitoring daemon and related utilities
+- `static/`: Frontend assets (JavaScript, CSS, images)
+- `templates/`: HTML templates for the web interface
+- `schema.sql`: Database schema definition
+- `instance/`: Instance-specific data (database, configuration)
+- `rrd/`: RRD files for storing metrics data
+
+## Development Workflow
+
+The project follows an API-first approach, where backend functionality is implemented as API endpoints first, then integrated with the frontend. This allows for better separation of concerns and easier testing.
+
+## Deployment Considerations
+
+- For production use, the application should be deployed behind a reverse proxy
+- The monitoring daemon should be configured to start automatically on system boot
+- Regular database backups are recommended
+- Consider security implications when exposing the application to the internet
 
 ## Key Components
 
@@ -38,12 +67,12 @@ This is a Flask web application called "ReUptime" for monitoring AWS instance up
 - Main tables:
   - `hosts` with columns:
     - `id` (INTEGER PRIMARY KEY)
-    - `aws_account_label` (TEXT)
-    - `aws_account_id` (TEXT)
-    - `aws_region` (TEXT)
-    - `aws_instance_id` (TEXT)
-    - `aws_instance_ip` (TEXT)
-    - `aws_instance_name` (TEXT)
+    - `account_label` (TEXT)
+    - `account_id` (TEXT)
+    - `region` (TEXT)
+    - `host_id` (TEXT)
+    - `host_ip_address_address` (TEXT)
+    - `host_name` (TEXT)
     - `created_at` (TIMESTAMP)
     - `last_check` (TIMESTAMP)
     - `is_active` (BOOLEAN)
@@ -160,7 +189,7 @@ with get_db() as db:
 # Insert a host
 with get_db() as db:
     db.execute('''
-        INSERT INTO hosts (aws_account_label, aws_account_id, ...)
+        INSERT INTO hosts (account_label, account_id, ...)
         VALUES (?, ?, ...)
     ''', (label, account_id, ...))
     db.commit()
@@ -182,13 +211,13 @@ with get_db() as db:
     # Insert into deleted_hosts
     db.execute('''
         INSERT INTO deleted_hosts (
-            aws_account_label, aws_account_id, aws_region,
-            aws_instance_id, aws_instance_ip, aws_instance_name,
+            account_label, account_id, region,
+            host_id, host_ip_address, host_name,
             created_at, last_check, is_active, deleted_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ''', (
-        host['aws_account_label'], host['aws_account_id'], host['aws_region'],
-        host['aws_instance_id'], host['aws_instance_ip'], host['aws_instance_name'],
+        host['account_label'], host['account_id'], host['region'],
+        host['host_id'], host['host_ip_address'], host['host_name'],
         host['created_at'], host['last_check'], host['is_active']
     ))
     

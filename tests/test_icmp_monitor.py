@@ -23,12 +23,12 @@ class TestICMPMonitor(unittest.TestCase):
         self.conn.execute('''
             CREATE TABLE hosts (
                 id INTEGER PRIMARY KEY,
-                aws_account_label TEXT,
-                aws_account_id TEXT,
-                aws_region TEXT,
-                aws_instance_id TEXT,
-                aws_instance_ip TEXT,
-                aws_instance_name TEXT,
+                account_label TEXT,
+                account_id TEXT,
+                region TEXT,
+                host_id TEXT,
+                host_ip_address TEXT,
+                host_name TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_check TIMESTAMP,
                 is_active BOOLEAN DEFAULT 0
@@ -37,11 +37,11 @@ class TestICMPMonitor(unittest.TestCase):
         
         # Insert some test hosts
         self.conn.execute('''
-            INSERT INTO hosts (aws_account_label, aws_account_id, aws_region, aws_instance_id, aws_instance_ip, aws_instance_name)
+            INSERT INTO hosts (account_label, account_id, region, host_id, host_ip_address, host_name)
             VALUES ('Test Account', '123456789012', 'us-west-2', 'i-12345678', '192.168.1.1', 'Test Instance 1')
         ''')
         self.conn.execute('''
-            INSERT INTO hosts (aws_account_label, aws_account_id, aws_region, aws_instance_id, aws_instance_ip, aws_instance_name)
+            INSERT INTO hosts (account_label, account_id, region, host_id, host_ip_address, host_name)
             VALUES ('Test Account', '123456789012', 'us-west-2', 'i-87654321', '192.168.1.2', 'Test Instance 2')
         ''')
         self.conn.commit()
@@ -70,8 +70,8 @@ class TestICMPMonitor(unittest.TestCase):
         original_get_all_hosts = daemon.get_all_hosts
         daemon.get_all_hosts = MagicMock()
         test_hosts = [
-            {'id': 1, 'aws_instance_ip': '192.168.1.1', 'aws_instance_name': 'Test Instance 1'},
-            {'id': 2, 'aws_instance_ip': '192.168.1.2', 'aws_instance_name': 'Test Instance 2'}
+            {'id': 1, 'host_ip_address': '192.168.1.1', 'host_name': 'Test Instance 1'},
+            {'id': 2, 'host_ip_address': '192.168.1.2', 'host_name': 'Test Instance 2'}
         ]
         daemon.get_all_hosts.return_value = test_hosts
         
@@ -109,7 +109,7 @@ class TestICMPMonitor(unittest.TestCase):
         mock_path_exists.return_value = True
         
         # Create a test host
-        test_host = {'id': 1, 'aws_instance_ip': '192.168.1.1', 'aws_instance_name': 'Test Instance 1'}
+        test_host = {'id': 1, 'host_ip_address': '192.168.1.1', 'host_name': 'Test Instance 1'}
         
         # Call the check_host function
         success, latency = daemon.check_host(test_host)
@@ -138,7 +138,7 @@ class TestICMPMonitor(unittest.TestCase):
         mock_path_exists.return_value = True
         
         # Create a test host
-        test_host = {'id': 1, 'aws_instance_ip': '192.168.1.1', 'aws_instance_name': 'Test Instance 1'}
+        test_host = {'id': 1, 'host_ip_address': '192.168.1.1', 'host_name': 'Test Instance 1'}
         
         # Call the check_host function
         success, latency = daemon.check_host(test_host)
@@ -160,7 +160,7 @@ class TestICMPMonitor(unittest.TestCase):
         mock_check_host.return_value = (True, 0.123)
         
         # Create a test host
-        test_host = {'id': 1, 'aws_instance_ip': '192.168.1.1', 'aws_instance_name': 'Test Instance 1'}
+        test_host = {'id': 1, 'host_ip_address': '192.168.1.1', 'host_name': 'Test Instance 1'}
         
         # Call the check_host_thread function
         daemon.check_host_thread(test_host)
@@ -175,9 +175,9 @@ class TestICMPMonitor(unittest.TestCase):
         # Verify that hosts were returned
         self.assertEqual(len(hosts), 2)
         self.assertEqual(hosts[0]['id'], 1)
-        self.assertEqual(hosts[0]['aws_instance_ip'], '192.168.1.1')
+        self.assertEqual(hosts[0]['host_ip_address'], '192.168.1.1')
         self.assertEqual(hosts[1]['id'], 2)
-        self.assertEqual(hosts[1]['aws_instance_ip'], '192.168.1.2')
+        self.assertEqual(hosts[1]['host_ip_address'], '192.168.1.2')
     
     @patch('argparse.ArgumentParser.parse_args')
     @patch('monitors.icmp.daemon.run_checks')

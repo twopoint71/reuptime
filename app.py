@@ -93,7 +93,7 @@ if __name__ == '__main__':
             hosts = db.execute('SELECT * FROM hosts').fetchall()
             for host in hosts:
                 try:
-                    print(f"Initializing RRD for host {host['id']} ({host['aws_instance_name']})...")
+                    print(f"Initializing RRD for host {host['id']} ({host['host_name']})...")
                     init_rrd(host['id'], app.config)
                     print(f"RRD initialized successfully for host {host['id']}.")
                 except Exception as e:

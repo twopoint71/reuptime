@@ -41,10 +41,10 @@ def test_import_hosts_success(client, sample_csv, app_with_db):
 
     # Verify host was added to database
     with get_db(app_with_db.config) as db:
-        host = db.execute('SELECT * FROM hosts WHERE aws_instance_name = ?', ('Test Instance',)).fetchone()
+        host = db.execute('SELECT * FROM hosts WHERE host_name = ?', ('Test Instance',)).fetchone()
         assert host is not None
-        assert host['aws_account_label'] == 'Test Account'
-        assert host['aws_account_id'] == '123456789012'
+        assert host['account_label'] == 'Test Account'
+        assert host['account_id'] == '123456789012'
 
 def test_get_metrics_redirect(client):
     """Test that the /metrics endpoint redirects to /api/metrics."""
@@ -132,30 +132,17 @@ def test_add_host_missing_fields(client):
     """Test adding a host with missing fields."""
     response = client.post('/add_host', data={})
     assert response.status_code == 400
-    assert b'aws_account_label is required' in response.data
-
-def test_add_host_invalid_account_id(client):
-    """Test adding a host with an invalid AWS account ID."""
-    response = client.post('/add_host', data={
-        'aws_account_label': 'Test Account',
-        'aws_account_id': '123',  # Invalid: not 12 digits
-        'aws_region': 'us-east-1',
-        'aws_instance_id': 'i-1234567890abcdef0',
-        'aws_instance_ip': '192.168.1.1',
-        'aws_instance_name': 'test-instance'
-    })
-    assert response.status_code == 400
-    assert b'AWS Account ID must be 12 digits' in response.data
+    assert b'account_label is required' in response.data
 
 def test_add_host_success(client, app_with_db):
     """Test successfully adding a host."""
     response = client.post('/add_host', data={
-        'aws_account_label': 'Test Account',
-        'aws_account_id': '123456789012',
-        'aws_region': 'us-east-1',
-        'aws_instance_id': 'i-1234567890abcdef0',
-        'aws_instance_ip': '192.168.1.1',
-        'aws_instance_name': 'test-instance'
+        'account_label': 'Test Account',
+        'account_id': '123456789012',
+        'region': 'us-east-1',
+        'host_id': 'i-1234567890abcdef0',
+        'host_ip_address': '192.168.1.1',
+        'host_name': 'test-instance'
     })
     assert response.status_code == 302
     # Check that it redirects to the index page with the host_added parameter
@@ -163,10 +150,10 @@ def test_add_host_success(client, app_with_db):
 
     # Verify host was added to database
     with get_db(app_with_db.config) as db:
-        host = db.execute('SELECT * FROM hosts WHERE aws_instance_name = ?', ('test-instance',)).fetchone()
+        host = db.execute('SELECT * FROM hosts WHERE host_name = ?', ('test-instance',)).fetchone()
         assert host is not None
-        assert host['aws_account_label'] == 'Test Account'
-        assert host['aws_account_id'] == '123456789012'
+        assert host['account_label'] == 'Test Account'
+        assert host['account_id'] == '123456789012'
 
     # Verify RRD file was created
     rrd_file = get_rrd_path(host['id'], app_with_db.config)
@@ -205,12 +192,12 @@ def test_host_details_modal_content(client, sample_host):
     for host in hosts_data:
         if host['id'] == sample_host['id']:
             sample_host_found = True
-            assert host['aws_account_label'] == sample_host['aws_account_label']
-            assert host['aws_account_id'] == sample_host['aws_account_id']
-            assert host['aws_region'] == sample_host['aws_region']
-            assert host['aws_instance_id'] == sample_host['aws_instance_id']
-            assert host['aws_instance_ip'] == sample_host['aws_instance_ip']
-            assert host['aws_instance_name'] == sample_host['aws_instance_name']
+            assert host['account_label'] == sample_host['account_label']
+            assert host['account_id'] == sample_host['account_id']
+            assert host['region'] == sample_host['region']
+            assert host['host_id'] == sample_host['host_id']
+            assert host['host_ip_address'] == sample_host['host_ip_address']
+            assert host['host_name'] == sample_host['host_name']
             assert ('is_active' in host) == ('is_active' in sample_host)
             if 'is_active' in host and 'is_active' in sample_host:
                 assert host['is_active'] == sample_host['is_active']
@@ -245,7 +232,7 @@ def test_delete_host_success(client, sample_host, app_with_db):
         assert host is None
         
         # Verify host was added to deleted_hosts table
-        deleted_host = db.execute('SELECT * FROM deleted_hosts WHERE aws_instance_name = ?', (sample_host["aws_instance_name"],)).fetchone()
+        deleted_host = db.execute('SELECT * FROM deleted_hosts WHERE host_name = ?', (sample_host["host_name"],)).fetchone()
         assert deleted_host is not None
 
 def test_undo_delete_not_found(client):
@@ -261,7 +248,7 @@ def test_undo_delete_success(client, sample_host, app_with_db):
     
     # Get the ID of the deleted host
     with get_db(app_with_db.config) as db:
-        deleted_host = db.execute('SELECT * FROM deleted_hosts WHERE aws_instance_name = ?', (sample_host["aws_instance_name"],)).fetchone()
+        deleted_host = db.execute('SELECT * FROM deleted_hosts WHERE host_name = ?', (sample_host["host_name"],)).fetchone()
         deleted_host_id = deleted_host['id']
     
     # Now restore the host
@@ -277,7 +264,7 @@ def test_undo_delete_success(client, sample_host, app_with_db):
         restored_host_id = response.get_json()['restored_host_id']
         host = db.execute('SELECT * FROM hosts WHERE id = ?', (restored_host_id,)).fetchone()
         assert host is not None
-        assert host['aws_instance_name'] == sample_host['aws_instance_name']
+        assert host['host_name'] == sample_host['host_name']
 
 def test_delete_button_present(client, sample_host):
     """Test that the delete functionality is available."""
@@ -383,10 +370,10 @@ def test_api_deleted_hosts_with_data(client, sample_host, app_with_db):
     assert len(data) > 0
     
     # Check that the deleted host is in the response
-    deleted_host = next((h for h in data if h['aws_instance_name'] == sample_host['aws_instance_name']), None)
+    deleted_host = next((h for h in data if h['host_name'] == sample_host['host_name']), None)
     assert deleted_host is not None
-    assert deleted_host['aws_account_label'] == sample_host['aws_account_label']
-    assert deleted_host['aws_account_id'] == sample_host['aws_account_id']
+    assert deleted_host['account_label'] == sample_host['account_label']
+    assert deleted_host['account_id'] == sample_host['account_id']
 
 def test_api_restore_host_missing_id(client):
     """Test restoring a host without providing an ID."""
@@ -411,7 +398,7 @@ def test_api_restore_host_success(client, sample_host, app_with_db):
     
     # Get the ID of the deleted host
     with get_db(app_with_db.config) as db:
-        deleted_host = db.execute('SELECT * FROM deleted_hosts WHERE aws_instance_name = ?', (sample_host["aws_instance_name"],)).fetchone()
+        deleted_host = db.execute('SELECT * FROM deleted_hosts WHERE host_name = ?', (sample_host["host_name"],)).fetchone()
         deleted_host_id = deleted_host['id']
     
     # Now restore the host via the API
@@ -435,7 +422,7 @@ def test_api_restore_host_success(client, sample_host, app_with_db):
         restored_host_id = data['restored_host_id']
         host = db.execute('SELECT * FROM hosts WHERE id = ?', (restored_host_id,)).fetchone()
         assert host is not None
-        assert host['aws_instance_name'] == sample_host['aws_instance_name']
+        assert host['host_name'] == sample_host['host_name']
 
 def test_api_permanently_delete_host_missing_id(client):
     """Test permanently deleting a host without providing an ID."""
@@ -460,7 +447,7 @@ def test_api_permanently_delete_host_success(client, sample_host, app_with_db):
     
     # Get the ID of the deleted host
     with get_db(app_with_db.config) as db:
-        deleted_host = db.execute('SELECT * FROM deleted_hosts WHERE aws_instance_name = ?', (sample_host["aws_instance_name"],)).fetchone()
+        deleted_host = db.execute('SELECT * FROM deleted_hosts WHERE host_name = ?', (sample_host["host_name"],)).fetchone()
         deleted_host_id = deleted_host['id']
     
     # Now permanently delete the host via the API

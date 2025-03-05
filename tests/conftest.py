@@ -46,7 +46,7 @@ def runner():
 @pytest.fixture
 def sample_csv():
     """Create a sample CSV file content for testing."""
-    return '''AWS Account Label,AWS Account ID,AWS Region,AWS Instance ID,AWS Instance IP Address,AWS Instance Name
+    return '''Account Label,Account Id,Region,Host Id,Host IP Address,Host Name
 Test Account,123456789012,us-east-1,i-1234567890abcdef0,10.0.0.1,Test Instance'''
 
 def populate_rrd_with_test_data(host_id, app_config):
@@ -138,8 +138,8 @@ def sample_host(app_with_db):
     with get_db(app_with_db.config) as db:
         cursor = db.execute('''
             INSERT INTO hosts (
-                aws_account_label, aws_account_id, aws_region,
-                aws_instance_id, aws_instance_ip, aws_instance_name,
+                account_label, account_id, region,
+                host_id, host_ip_address, host_name,
                 is_active, last_check, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ''', (
@@ -163,12 +163,12 @@ def sample_host(app_with_db):
         
         return {
             'id': host_id,
-            'aws_account_label': 'Test Account',
-            'aws_account_id': '123456789012',
-            'aws_region': 'us-east-1',
-            'aws_instance_id': 'i-1234567890abcdef0',
-            'aws_instance_ip': '192.168.1.1',
-            'aws_instance_name': 'test-instance',
+            'account_label': 'Test Account',
+            'account_id': '123456789012',
+            'region': 'us-east-1',
+            'host_id': 'i-1234567890abcdef0',
+            'host_ip_address': '192.168.1.1',
+            'host_name': 'test-instance',
             'is_active': 1,  # Add is_active to the returned dictionary
             'last_check': host['last_check'],  # Add last_check from the database
             'created_at': host['created_at']   # Add created_at from the database

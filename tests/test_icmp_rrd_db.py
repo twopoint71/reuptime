@@ -28,12 +28,12 @@ class TestICMPRRDAndDB(unittest.TestCase):
         self.conn.execute('''
             CREATE TABLE hosts (
                 id INTEGER PRIMARY KEY,
-                aws_account_label TEXT,
-                aws_account_id TEXT,
-                aws_region TEXT,
-                aws_instance_id TEXT,
-                aws_instance_ip TEXT,
-                aws_instance_name TEXT,
+                account_label TEXT,
+                account_id TEXT,
+                region TEXT,
+                host_id TEXT,
+                host_ip_address TEXT,
+                host_name TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_check TIMESTAMP,
                 is_active BOOLEAN DEFAULT 0
@@ -42,7 +42,7 @@ class TestICMPRRDAndDB(unittest.TestCase):
         
         # Insert a test host
         self.conn.execute('''
-            INSERT INTO hosts (aws_account_label, aws_account_id, aws_region, aws_instance_id, aws_instance_ip, aws_instance_name)
+            INSERT INTO hosts (account_label, account_id, region, host_id, host_ip_address, host_name)
             VALUES ('Test Account', '123456789012', 'us-west-2', 'i-12345678', '192.168.1.1', 'Test Instance 1')
         ''')
         self.conn.commit()
@@ -136,7 +136,7 @@ class TestICMPRRDAndDB(unittest.TestCase):
         
         # Get the host ID and IP
         cursor = self.conn.cursor()
-        cursor.execute("SELECT id, aws_instance_ip FROM hosts LIMIT 1")
+        cursor.execute("SELECT id, host_ip_address FROM hosts LIMIT 1")
         host_id, host_ip = cursor.fetchone()
         
         # Set up the RRD file
@@ -149,8 +149,8 @@ class TestICMPRRDAndDB(unittest.TestCase):
             # Call the check_host function
             host = {
                 'id': host_id,
-                'aws_instance_ip': host_ip,
-                'aws_instance_name': 'Test Instance 1'
+                'host_ip_address': host_ip,
+                'host_name': 'Test Instance 1'
             }            
             daemon.check_host(host)
             

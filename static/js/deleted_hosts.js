@@ -137,9 +137,9 @@ async function initializeDeletedHostsTable() {
         const statusClass = host.is_active ? 'bg-success' : 'bg-danger';
         
         row.innerHTML = `
-            <td>${host.aws_instance_name || 'Unknown'}</td>
-            <td>${host.aws_instance_ip || 'Unknown'}</td>
-            <td>${host.aws_region || 'Unknown'}</td>
+            <td>${host.host_name || 'Unknown'}</td>
+            <td>${host.host_ip_address || 'Unknown'}</td>
+            <td>${host.region || 'Unknown'}</td>
             <td><span class="badge ${statusClass}">${statusText}</span></td>
             <td>${formattedDate}</td>
             <td>
