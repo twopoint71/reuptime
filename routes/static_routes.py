@@ -8,6 +8,11 @@ def register_static_routes(app):
         """Serve the main index.html page."""
         return send_from_directory('static', 'index.html')
     
+    @app.route('/favicon.ico')
+    def favicon():
+        """Serve the favicon.ico file."""
+        return send_from_directory('static', 'favicon.ico')
+
     @app.route('/deleted_hosts')
     def deleted_hosts():
         """Serve the deleted_hosts.html page."""
