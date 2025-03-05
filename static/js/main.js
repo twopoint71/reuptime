@@ -183,7 +183,7 @@ function initializeHostsTable() {
                     <td>${host.region}</td>
                     <td>
                         <span class="badge ${host.is_active ? 'bg-success' : 'bg-danger'}">
-                            ${host.is_active ? 'Active' : 'Inactive'}
+                            ${host.is_active ? 'UP' : 'DOWN'}
                         </span>
                     </td>
                     <td>${host.last_check || 'Never'}</td>
@@ -238,7 +238,7 @@ function initializeHostsTable() {
                                     <dt class="col-sm-4">Status</dt>
                                     <dd class="col-sm-8">
                                         <span class="badge ${host.is_active ? 'bg-success' : 'bg-danger'}">
-                                            ${host.is_active ? 'Active' : 'Inactive'}
+                                            ${host.is_active ? 'UP' : 'DOWN'}
                                         </span>
                                     </dd>
                                     
