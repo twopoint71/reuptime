@@ -62,10 +62,11 @@ def check_host(host):
         tuple: (success, latency) where success is a boolean and latency is in ms
     """
     try:
-        # Perform ICMP check
+        # Perform ICMP check with shorter timeout (1 second)
+        # Add -W 1 to set the timeout to 1 second
         result = subprocess.run(
-            ['ping', '-c', '1', host['host_ip_address']],
-            capture_output=True, text=True, timeout=5
+            ['ping', '-c', '1', '-W', '2', host['host_ip_address']],
+            capture_output=True, text=True, timeout=2  # Also reduce the subprocess timeout to 2 seconds
         )
         success = result.returncode == 0
         
