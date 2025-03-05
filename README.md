@@ -83,17 +83,17 @@ For more detailed documentation, please see the [docs](./docs) directory:
 ## Tips
 If the ping service is run in user space, it may fail due to permissions.
 Check if cap_net_raw is available with
-    ```
+    
     getcap /bin/ping
-    ```
+    
 If cap_net_raw permissions are not available, try the following command to allow the permission in user space.
-    ```
+    
 	sudo setcap cap_net_raw+p /bin/ping
-    ```
+    
 Use this header CSV file imports:
-    ```
+   
     "Account Label","Account Id","Region","Host Id","Host IP Address","Hostname"
-    ```
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

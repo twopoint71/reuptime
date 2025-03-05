@@ -46,7 +46,7 @@ def runner():
 @pytest.fixture
 def sample_csv():
     """Create a sample CSV file content for testing."""
-    return '''Account Label,Account Id,Region,Host Id,Host IP Address,Host Name
+    return '''Account Label,Account Id,Region,Host Id,Host IP Address,Hostname
 Test Account,123456789012,us-east-1,i-1234567890abcdef0,10.0.0.1,Test Instance'''
 
 def populate_rrd_with_test_data(host_id, app_config):

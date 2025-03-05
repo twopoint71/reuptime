@@ -145,7 +145,8 @@ class TestICMPRRDAndDB(unittest.TestCase):
         init_rrd(str(host_id) + 'test', self.config)
         
         # Patch the get_rrd_path function to use our temporary directory
-        with patch('monitors.icmp.daemon.get_rrd_path', return_value=rrd_file):
+        with patch('monitors.icmp.daemon.get_rrd_path', return_value=rrd_file), \
+             patch.dict('monitors.icmp.daemon.app_config', {'DATABASE': self.db_path}):
             # Call the check_host function
             host = {
                 'id': host_id,
@@ -153,7 +154,7 @@ class TestICMPRRDAndDB(unittest.TestCase):
                 'host_name': 'Test Instance 1'
             }            
             daemon.check_host(host)
-            
+
             # Verify the database was updated
             cursor = self.conn.cursor()
             cursor.execute("SELECT is_active FROM hosts WHERE id = ?", (host_id,))
