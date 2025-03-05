@@ -1,8 +1,10 @@
-from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, url_for
+from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, url_for, render_template
 import os
 import sys
 from pathlib import Path
 import rrdtool
+import logging
+from logging.handlers import RotatingFileHandler
 
 # Import modules
 from db import get_db, init_db
@@ -12,9 +14,16 @@ from routes.host_routes import register_host_routes
 from routes.api_routes import register_api_routes
 from routes.daemon_routes import register_daemon_routes
 
-app = Flask(__name__)
-app.config['DATABASE'] = 'uptime.db'
-app.config['TESTING'] = False
+app = Flask(__name__, instance_relative_config=True)
+app.config.from_mapping(
+    SECRET_KEY=os.environ.get('SECRET_KEY', 'generate-a-secure-key-here'),
+    DATABASE=os.path.join(app.instance_path, 'reuptime.sqlite'),
+    DEBUG=False,  # Set to False for production
+)
+
+# If you're using environment-specific config files, ensure production settings are used
+app.config.from_pyfile('config.py', silent=True)
+
 app.config['MONITOR_PATH'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'monitors')
 app.config['RRD_DIR'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rrd')
 app.config['MONITOR_LOG_PATH'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'monitors', 'icmp', 'icmp_monitor.log')
@@ -59,6 +68,14 @@ def create_rrd(host_id):
     app.logger.info(f"Created RRD file for host {host_id}")
     return rrd_path
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('500.html'), 500
+
 if __name__ == '__main__':
     try:
         print("Initializing database...")
@@ -83,7 +100,24 @@ if __name__ == '__main__':
                     print(f"Error initializing RRD for host {host['id']}: {str(e)}")
         
         print("Starting Flask application...")
-        app.run(debug=True)
+        if not app.debug:
+            # Ensure log directory exists
+            if not os.path.exists('logs'):
+                os.mkdir('logs')
+            
+            # Set up file handler
+            file_handler = RotatingFileHandler('logs/reuptime.log', maxBytes=10240, backupCount=10)
+            file_handler.setFormatter(logging.Formatter(
+                '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+            ))
+            file_handler.setLevel(logging.INFO)
+            
+            # Apply handler to app logger
+            app.logger.addHandler(file_handler)
+            app.logger.setLevel(logging.INFO)
+            app.logger.info('ReUptime startup')
+        
+        app.run()
     except Exception as e:
         print(f"Error initializing application: {str(e)}")
         

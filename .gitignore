@@ -19,8 +19,8 @@ instance/
 
 # Project specific
 rrd/*.rrd
+monitors/icmp/daemon.pid
 monitors/icmp/icmp_monitor.log
-monitors/icmp/icmp_monitor.pid
 monitors/icmp/daemon_status.json
 
 # Environment variables
