@@ -8,6 +8,15 @@ def get_db(config):
     db.row_factory = sqlite3.Row
     return db
 
+def reinit_db(config):
+    """Reinitialize the database with required tables."""
+    with get_db(config) as db:
+        db.execute('DROP TABLE IF EXISTS hosts')
+        db.execute('DROP TABLE IF EXISTS deleted_hosts')
+        db.commit()
+        init_db(config)
+        print('Database dropped and recreated.')
+
 def init_db(config):
     """Initialize the database with required tables."""
     # Ensure the database directory exists and has the correct permissions

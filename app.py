@@ -7,7 +7,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 # Import modules
-from db import get_db, init_db
+from db import get_db, init_db, reinit_db
 from utils import setup_directories
 from routes.static_routes import register_static_routes
 from routes.host_routes import register_host_routes
@@ -36,6 +36,19 @@ register_static_routes(app)
 register_host_routes(app)
 register_api_routes(app)
 register_daemon_routes(app)
+
+# CL commands
+@app.cli.command('init-db')
+def init_db_command():
+    """Clear the existing data and create new tables."""
+    init_db(app.config)
+    print('Initialized the database.')
+
+@app.cli.command('reinit-db')
+def reinit_db_command():
+    """Clear the existing data and create new tables."""
+    reinit_db(app.config)
+    print('Reinitialized the database.')
 
 def create_rrd(host_id):
     """Create RRD file for a host if it doesn't exist already."""

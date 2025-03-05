@@ -23,7 +23,7 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
 2. Set up a virtual environment:
    ```
    python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   source .venv/bin/activate
    ```
 
 3. Install dependencies:
@@ -34,6 +34,10 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
 4. Initialize the database:
    ```
    flask --app app init-db
+   ```
+   or re-initialize if needed (Warning: all tables will be dropped)
+   ```
+   flask --app app reinit-db
    ```
 
 5. Start the application:
@@ -74,17 +78,17 @@ For more detailed documentation, please see the [docs](./docs) directory:
 ## Tips
 If the ping service is run in user space, it may fail due to permissions.
 Check if cap_net_raw is available with
-
+    ```
     getcap /bin/ping
-
+    ```
 If cap_net_raw permissions are not available, try the following command to allow the permission in user space.
-
+    ```
 	sudo setcap cap_net_raw+p /bin/ping
-
+    ```
 Use this header CSV file imports:
-
+    ```
     "Account Label","Account Id","Region","Host Id","Host IP Address","Hostname"
-
+    ```
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
