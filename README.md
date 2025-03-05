@@ -40,17 +40,22 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
    flask --app app reinit-db
    ```
 
-5. Start the application:
+5. DEVELOPMENT: Start the application:
    ```
    flask --app app run
    ```
 
-6. Start the monitoring daemon:
+6. PRODUCTION: Start the application:
+   ```
+   gunicorn -w 2 -b 0.0.0.0:5000 app:app
+   ```
+
+7. Start the monitoring daemon (also available on admin page):
    ```
    ./monitors/icmp/control.sh start
    ```
 
-7. Access the web interface at http://localhost:5000
+8. Access the web interface at http://localhost:5000
 
 ## Architecture
 
