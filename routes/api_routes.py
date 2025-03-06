@@ -6,7 +6,7 @@ import pytz
 from datetime import datetime
 from db import get_db
 from utils import read_last_n_lines
-from rrd_utils import get_rrd_path, init_rrd, fetch_rrd_data, format_rrd_data_for_chart
+from rrd_utils import get_rrd_path, init_rrd, fetch_rrd_data, format_rrd_data_for_chart, get_aggregate_rrd_path, init_aggregate_rrd
 
 def register_api_routes(app):
     """Register API routes for the application."""
@@ -245,11 +245,11 @@ def register_api_routes(app):
     
     @app.route('/api/aggregate_uptime')
     def get_aggregate_uptime():
-        """API endpoint to fetch aggregate uptime data for all hosts"""
+        """API endpoint to fetch aggregate uptime data from the dedicated RRD file"""
         # Parse time range parameter
         time_range = request.args.get('range', '24h')
         
-        # Calculate start time based on time range (same logic as in get_metrics_data)
+        # Calculate start time based on time range
         end_time = int(time.time())
         start_time = end_time
         
@@ -283,13 +283,85 @@ def register_api_routes(app):
             start_time = end_time - 86400
         
         try:
+            # Get the path to the aggregate RRD file
+            aggregate_rrd = get_aggregate_rrd_path(app.config)
+            
+            # Check if the aggregate RRD file exists
+            if not os.path.exists(aggregate_rrd):
+                print(f"Aggregate RRD file not found: {aggregate_rrd}")
+                # Try to create the RRD file
+                try:
+                    print(f"Attempting to create aggregate RRD file")
+                    aggregate_rrd = init_aggregate_rrd(app.config)
+                    print(f"Successfully created aggregate RRD file")
+                except Exception as e:
+                    print(f"Failed to create aggregate RRD file: {str(e)}")
+                    # Fall back to the old method of calculating from individual hosts
+                    return calculate_aggregate_from_hosts(start_time, end_time)
+            
+            # Fetch data from the aggregate RRD file
+            rrd_data = fetch_rrd_data(aggregate_rrd, start_time=start_time, end_time=end_time)
+            
+            if not rrd_data or len(rrd_data) < 3:
+                print("Invalid RRD data structure from aggregate RRD")
+                # Fall back to the old method
+                return calculate_aggregate_from_hosts(start_time, end_time)
+            
+            # Process the RRD data
+            time_info, ds_names, data = rrd_data
+            
+            # Filter out None values and their corresponding timestamps
+            valid_indices = [i for i, val in enumerate(data) if val[2] is not None]  # Check uptime_percent
+            
+            if not valid_indices:
+                print("No valid data points found in aggregate RRD")
+                # Fall back to the old method
+                return calculate_aggregate_from_hosts(start_time, end_time)
+            
+            valid_timestamps = [time_info[0] + (i * time_info[2]) for i in valid_indices]
+            valid_data = [data[i] for i in valid_indices]
+            
+            # Format data for Chart.js
+            formatted_timestamps = [datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S') for ts in valid_timestamps]
+            uptime_values = [float(val[2]) if val[2] is not None else None for val in valid_data]  # uptime_percent is at index 2
+            
+            # Get the most recent uptime percentage
+            current_uptime = uptime_values[-1] if uptime_values else 100.0
+            
+            chart_data = {
+                'labels': formatted_timestamps,
+                'datasets': [{
+                    'label': 'Aggregate Uptime (%)',
+                    'data': uptime_values,
+                    'borderColor': '#00FF00',
+                    'fill': False
+                }]
+            }
+            
+            return jsonify({
+                'current_uptime': f"{current_uptime:.2f}",
+                'chart_data': chart_data
+            })
+        
+        except Exception as e:
+            print(f"Error fetching aggregate uptime data: {str(e)}")
+            # Fall back to the old method in case of any error
+            return calculate_aggregate_from_hosts(start_time, end_time)
+
+    @app.route('/api/aggregate_uptime')
+    def calculate_aggregate_from_hosts(start_time, end_time):
+        """
+        Calculate aggregate uptime from individual host RRD files.
+        This is a fallback method in case the aggregate RRD file is not available.
+        """
+        try:
             # Get all hosts
             with get_db(app.config) as db:
                 hosts = db.execute('SELECT * FROM hosts').fetchall()
             
             if not hosts:
                 return jsonify({
-                    'current_uptime': 100,
+                    'current_uptime': "100.00",
                     'chart_data': {
                         'labels': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
                         'datasets': [{
@@ -334,11 +406,10 @@ def register_api_routes(app):
                     formatted_timestamps.append(datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'))
             
             # Calculate current uptime (average of the most recent data points)
-            current_uptime = 100  # Default to 100% if no data
+            current_uptime = 100.0  # Default to 100% if no data
             if uptime_values:
-                # Use the last 5 data points or all available if less than 5
-                recent_values = uptime_values[-5:] if len(uptime_values) >= 5 else uptime_values
-                current_uptime = sum(recent_values) / len(recent_values)
+                # Use the last data point
+                current_uptime = uptime_values[-1]
             
             # Format data for Chart.js
             chart_data = {
@@ -357,5 +428,5 @@ def register_api_routes(app):
             })
         
         except Exception as e:
-            print(f"Error calculating aggregate uptime: {str(e)}")
+            print(f"Error calculating aggregate uptime from hosts: {str(e)}")
             return jsonify({'error': str(e)}), 500 

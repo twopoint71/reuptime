@@ -333,3 +333,111 @@ def format_rrd_data_for_chart(rrd_data):
                 }
             ]
         }
+
+def get_aggregate_rrd_path(app_config=None):
+    """Get the path to the aggregate uptime RRD file."""
+    if app_config is None:
+        app_config = {'TESTING': False}
+    
+    # Use absolute path for RRD files
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    if app_config.get('TESTING', False):
+        base_dir = os.path.dirname(app_config['DATABASE'])
+    else:
+        base_dir = project_root
+    
+    rrd_dir = os.path.join(base_dir, 'rrd')
+    # Ensure the directory exists
+    os.makedirs(rrd_dir, exist_ok=True)
+    
+    return os.path.join(base_dir, 'rrd', 'host_icmp_uptime.rrd')
+
+def init_aggregate_rrd(app_config):
+    """Initialize RRD database for aggregate uptime statistics."""
+    rrd_file = get_aggregate_rrd_path(app_config)
+    print(f"Initializing aggregate RRD file at path: {rrd_file}")
+    
+    # Set start time to 24 hours before current time
+    start_time = int(time.time() - 86500)
+
+    if not os.path.exists(rrd_file):
+        try:
+            # Ensure the directory exists
+            rrd_dir = os.path.dirname(rrd_file)
+            print(f"Creating RRD directory if it doesn't exist: {rrd_dir}")
+            os.makedirs(rrd_dir, exist_ok=True)
+            
+            print(f"Creating aggregate RRD file with start time: {start_time}")
+            rrdtool.create(
+                rrd_file,
+                '--start', str(start_time),
+                '--step', '20',  # 20-second intervals to match daemon collection frequency
+                'DS:hosts_up:GAUGE:40:0:1000',      # Number of hosts up
+                'DS:hosts_down:GAUGE:40:0:1000',    # Number of hosts down
+                'DS:uptime_percent:GAUGE:40:0:100', # Uptime percentage
+                'RRA:AVERAGE:0.5:1:4320',      # 1 day at 20-second resolution (4320 points)
+                'RRA:AVERAGE:0.5:15:1440',     # 5 days at 5-minute resolution (15 points per step)
+                'RRA:AVERAGE:0.5:180:720',     # 30 days at 1-hour resolution (180 points per step)
+                'RRA:AVERAGE:0.5:4320:365'     # 1 year at 1-day resolution (4320 points per step)
+            )
+            print(f"Aggregate RRD file created successfully: {rrd_file}")
+            os.chmod(rrd_file, 0o644)
+            
+            # Initialize with some default data points
+            initialize_aggregate_rrd_with_defaults(rrd_file, start_time)
+            
+            # Log the creation of the RRD file
+            log_file = app_config.get('MONITOR_LOG_PATH')
+            if log_file and os.path.exists(log_file):
+                print(f"Logging aggregate RRD file creation to: {log_file}")
+                with open(log_file, 'a') as f:
+                    f.write(f"[INFO] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Created aggregate uptime RRD file: {rrd_file}\n")
+            else:
+                print(f"Log file not found or not specified: {log_file}")
+        except Exception as e:
+            print(f"Error creating aggregate RRD file: {str(e)}")
+            # Log the error
+            log_file = app_config.get('MONITOR_LOG_PATH')
+            if log_file and os.path.exists(log_file):
+                with open(log_file, 'a') as f:
+                    f.write(f"[ERROR] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Failed to create aggregate uptime RRD file: {str(e)}\n")
+            raise
+    else:
+        print(f"Aggregate RRD file already exists: {rrd_file}")
+    
+    return rrd_file
+
+def initialize_aggregate_rrd_with_defaults(rrd_file, start_time):
+    """
+    Initialize an aggregate RRD file with some default data points.
+    
+    Args:
+        rrd_file: Path to the RRD file
+        start_time: Start time in seconds since epoch
+    """
+    try:
+        print(f"Initializing aggregate RRD file with default data: {rrd_file}")
+        # Add data points for the last 24 hours at 5-minute intervals
+        current_time = int(time.time())
+        
+        # Start from 24 hours ago and add a data point every 5 minutes
+        for timestamp in range(start_time + 300, current_time, 300):
+            # Default values: 1 host up, 0 hosts down, 100% uptime
+            update_aggregate_rrd(rrd_file, timestamp, 1, 0, 100.0)
+        
+        print(f"Aggregate RRD file initialized with default data: {rrd_file}")
+    except Exception as e:
+        print(f"Error initializing aggregate RRD file with default data: {str(e)}")
+
+def update_aggregate_rrd(rrd_file, timestamp, hosts_up, hosts_down, uptime_percent):
+    """Update aggregate RRD database with standardized error handling."""
+    try:
+        update_string = f'{timestamp}:{hosts_up}:{hosts_down}:{uptime_percent}'
+        print(f"Updating aggregate RRD with: {update_string}")
+        rrdtool.update(rrd_file, update_string)
+        return True
+    except Exception as e:
+        print(f"Error updating aggregate RRD file: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False

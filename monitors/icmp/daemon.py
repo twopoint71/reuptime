@@ -17,10 +17,11 @@ import argparse
 import json
 import atexit
 import subprocess
+import math
 
 # Add the parent directory to the path so we can import from the root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from rrd_utils import get_rrd_path, update_rrd
+from rrd_utils import get_rrd_path, update_rrd, get_aggregate_rrd_path, init_aggregate_rrd, update_aggregate_rrd
 from db import get_db, init_db, get_default_db_path  # Import get_default_db_path from db.py
 
 # Configure logging
@@ -172,6 +173,12 @@ def run_checks():
         thread.join()
     
     logger.info(f"Completed checking {len(hosts)} hosts")
+    
+    # Spawn a new thread to calculate and store aggregate uptime
+    aggregate_thread = threading.Thread(target=get_aggregate_uptime)
+    aggregate_thread.daemon = True
+    aggregate_thread.start()
+    aggregate_thread.join()  # Wait for the aggregate calculation to complete
 
 def signal_handler(sig, frame):
     """Handle signals to gracefully shut down the daemon."""
@@ -203,6 +210,66 @@ def cleanup():
         logger.info("Daemon cleanup completed")
     except Exception as e:
         logger.error(f"Error during cleanup: {str(e)}")
+
+def get_aggregate_uptime():
+    """
+    Get the aggregate uptime statistics for all hosts and store in a dedicated RRD file.
+    This runs as a separate thread after each monitoring cycle.
+    """
+    try:
+        logger.debug("Starting aggregate uptime calculation")
+        
+        # Get all hosts
+        hosts = get_all_hosts()
+        if not hosts:
+            logger.warning("No hosts found for aggregate uptime calculation")
+            return
+        
+        # Count hosts up and down
+        hosts_up = 0
+        hosts_down = 0
+        total_hosts = len(hosts)
+        
+        # Get the current timestamp aligned to the interval
+        current_time = int(time.time())
+        aligned_timestamp = math.floor(current_time / 20) * 20  # Align to 20-second interval
+        
+        # Check each host's status
+        for host in hosts:
+            if host['is_active']:
+                hosts_up += 1
+            else:
+                hosts_down += 1
+        
+        # Calculate uptime percentage
+        uptime_percent = 0
+        if total_hosts > 0:
+            uptime_percent = round((hosts_up / total_hosts) * 100, 2)
+        
+        logger.info(f"Aggregate uptime: {uptime_percent}% (Up: {hosts_up}, Down: {hosts_down}, Total: {total_hosts})")
+        
+        # Import the necessary functions from rrd_utils
+        from rrd_utils import get_aggregate_rrd_path, init_aggregate_rrd, update_aggregate_rrd
+        
+        # Get the path to the aggregate RRD file
+        aggregate_rrd = get_aggregate_rrd_path(app_config)
+        
+        # Create the RRD file if it doesn't exist
+        if not os.path.exists(aggregate_rrd):
+            logger.info(f"Creating aggregate uptime RRD file: {aggregate_rrd}")
+            aggregate_rrd = init_aggregate_rrd(app_config)
+        
+        # Update the RRD file with current values
+        logger.debug(f"Updating aggregate RRD at {aligned_timestamp} with values: hosts_up={hosts_up}, hosts_down={hosts_down}, uptime_percent={uptime_percent}")
+        success = update_aggregate_rrd(aggregate_rrd, aligned_timestamp, hosts_up, hosts_down, uptime_percent)
+        
+        if success:
+            logger.debug(f"Successfully updated aggregate uptime RRD")
+        else:
+            logger.error(f"Failed to update aggregate uptime RRD")
+        
+    except Exception as e:
+        logger.error(f"Error calculating aggregate uptime: {str(e)}", exc_info=True)
 
 def main():
     """Main function to run the daemon."""
