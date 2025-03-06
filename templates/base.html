@@ -4,31 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ReUptime - Host Monitoring{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/all.min.css">
     <link rel="stylesheet" href="/static/css/style.css">
     <!-- Immediate dark mode script -->
     <script>
-        // Check for dark mode preference (localStorage is faster than cookies)
-        if (localStorage.getItem('darkMode') === 'enabled') {
-            document.documentElement.classList.add('dark-mode-preload');
-            document.body.classList.add('dark-mode-preload');
-            
-            // We need to set this after the DOM is loaded
-            document.addEventListener('DOMContentLoaded', function() {
-                const navbar = document.querySelector('.navbar');
-                if (navbar) {
-                    navbar.classList.remove('navbar-light', 'bg-light');
-                    navbar.classList.add('navbar-dark', 'bg-dark');
-                }
-                
-                const darkModeToggle = document.getElementById('darkModeToggle');
-                if (darkModeToggle) {
-                    darkModeToggle.classList.remove('btn-outline-secondary');
-                    darkModeToggle.classList.add('btn-outline-light');
-                }
-            });
-        }
+	    // Check for dark mode preference (localStorage is faster than cookies)
+	    if (localStorage.getItem('darkMode') === 'enabled') {
+		document.documentElement.classList.add('dark-mode-preload');
+		document.body.classList.add('dark-mode-preload');
+
+		// We need to set this after the DOM is loaded
+		document.addEventListener('DOMContentLoaded', function() {
+		    const navbar = document.querySelector('.navbar');
+		    if (navbar) {
+			navbar.classList.remove('navbar-light', 'bg-light');
+			navbar.classList.add('navbar-dark', 'bg-dark');
+		    }
+
+		    const darkModeToggle = document.getElementById('darkModeToggle');
+		    if (darkModeToggle) {
+			darkModeToggle.classList.remove('btn-outline-secondary');
+			darkModeToggle.classList.add('btn-outline-light');
+		    }
+		});
+	    }
     </script>
     {% block head %}{% endblock %}
 </head>
@@ -43,6 +43,12 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/monitored_hosts' %}active{% endif %}" href="/monitored_hosts">Monitored Hosts</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/unmonitored_hosts' %}active{% endif %}" href="/unmonitored_hosts">Unmonitored Hosts</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/host_list' %}active{% endif %}" href="/host_list">Hosts List</a>
@@ -72,9 +78,9 @@
         {% block content %}{% endblock %}
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/chart.js"></script>
     <script src="/static/js/main.js"></script>
     {% block scripts %}{% endblock %}
 </body>
-</html> 
+</html>
