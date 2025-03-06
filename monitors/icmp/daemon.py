@@ -207,7 +207,7 @@ def cleanup():
 def main():
     """Main function to run the daemon."""
     parser = argparse.ArgumentParser(description='ICMP Monitor Daemon')
-    parser.add_argument('--interval', type=int, default=10, help='Interval between checks in seconds (default: 10)')
+    parser.add_argument('--interval', type=int, default=20, help='Interval between checks in seconds (default: 20)')
     parser.add_argument('--debug', action='store_true', help='Enable debug logging')
     parser.add_argument('--action', choices=['start', 'stop', 'status'], default='start', 
                         help='Action to perform (start, stop, status)')

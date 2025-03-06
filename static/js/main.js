@@ -296,7 +296,6 @@ function initializeHostsTable() {
                                     <div class="col-md-4">
                                         <label for="refreshInterval${host.id}" class="form-label">Refresh Interval:</label>
                                         <select id="refreshInterval${host.id}" class="form-select" disabled>
-                                            <option value="10000">10 Seconds</option>
                                             <option value="30000">30 Seconds</option>
                                             <option value="60000">1 Minute</option>
                                             <option value="300000" selected>5 Minutes</option>
