@@ -241,4 +241,121 @@ def register_api_routes(app):
         except Exception as e:
             return jsonify({
                 'error': str(e)
-            }), 500 
+            }), 500
+    
+    @app.route('/api/aggregate_uptime')
+    def get_aggregate_uptime():
+        """API endpoint to fetch aggregate uptime data for all hosts"""
+        # Parse time range parameter
+        time_range = request.args.get('range', '24h')
+        
+        # Calculate start time based on time range (same logic as in get_metrics_data)
+        end_time = int(time.time())
+        start_time = end_time
+        
+        # Parse time range format
+        if time_range.endswith('m'):
+            # Minutes
+            minutes = int(time_range[:-1])
+            start_time = end_time - (minutes * 60)
+        elif time_range.endswith('h'):
+            # Hours
+            hours = int(time_range[:-1])
+            start_time = end_time - (hours * 3600)
+        elif time_range.endswith('d'):
+            # Days
+            days = int(time_range[:-1])
+            start_time = end_time - (days * 86400)
+        elif time_range.endswith('w'):
+            # Weeks
+            weeks = int(time_range[:-1])
+            start_time = end_time - (weeks * 7 * 86400)
+        elif time_range.endswith('mo'):
+            # Months (approximate)
+            months = int(time_range[:-2])
+            start_time = end_time - (months * 30 * 86400)
+        elif time_range.endswith('y'):
+            # Years (approximate)
+            years = int(time_range[:-1])
+            start_time = end_time - (years * 365 * 86400)
+        else:
+            # Default to 24 hours
+            start_time = end_time - 86400
+        
+        try:
+            # Get all hosts
+            with get_db(app.config) as db:
+                hosts = db.execute('SELECT * FROM hosts').fetchall()
+            
+            if not hosts:
+                return jsonify({
+                    'current_uptime': 100,
+                    'chart_data': {
+                        'labels': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
+                        'datasets': [{
+                            'label': 'Aggregate Uptime (%)',
+                            'data': [100],
+                            'borderColor': '#00FF00',
+                            'fill': False
+                        }]
+                    }
+                })
+            
+            # Initialize data structure for aggregate uptime
+            aggregate_data = {}
+            
+            # Collect uptime data from each host's RRD file
+            for host in hosts:
+                rrd_file = get_rrd_path(host['id'], app.config)
+                if os.path.exists(rrd_file):
+                    rrd_data = fetch_rrd_data(rrd_file, start_time=start_time, end_time=end_time)
+                    if rrd_data:
+                        time_info, ds_names, data = rrd_data
+                        
+                        # Process each data point
+                        for i, point in enumerate(data):
+                            if point[0] is not None:  # Check if uptime value exists
+                                timestamp = time_info[0] + (i * time_info[2])
+                                if timestamp not in aggregate_data:
+                                    aggregate_data[timestamp] = {'total': 0, 'count': 0}
+                                
+                                aggregate_data[timestamp]['total'] += float(point[0])
+                                aggregate_data[timestamp]['count'] += 1
+            
+            # Calculate averages for each timestamp
+            timestamps = sorted(aggregate_data.keys())
+            uptime_values = []
+            formatted_timestamps = []
+            
+            for ts in timestamps:
+                if aggregate_data[ts]['count'] > 0:
+                    avg_uptime = aggregate_data[ts]['total'] / aggregate_data[ts]['count']
+                    uptime_values.append(avg_uptime)
+                    formatted_timestamps.append(datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'))
+            
+            # Calculate current uptime (average of the most recent data points)
+            current_uptime = 100  # Default to 100% if no data
+            if uptime_values:
+                # Use the last 5 data points or all available if less than 5
+                recent_values = uptime_values[-5:] if len(uptime_values) >= 5 else uptime_values
+                current_uptime = sum(recent_values) / len(recent_values)
+            
+            # Format data for Chart.js
+            chart_data = {
+                'labels': formatted_timestamps,
+                'datasets': [{
+                    'label': 'Aggregate Uptime (%)',
+                    'data': uptime_values,
+                    'borderColor': '#00FF00',
+                    'fill': False
+                }]
+            }
+            
+            return jsonify({
+                'current_uptime': round(current_uptime, 2),
+                'chart_data': chart_data
+            })
+        
+        except Exception as e:
+            print(f"Error calculating aggregate uptime: {str(e)}")
+            return jsonify({'error': str(e)}), 500 

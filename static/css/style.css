@@ -358,3 +358,41 @@ a:hover {
         display: none;
     }
 }
+
+/* Uptime display styling */
+.display-4 {
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+/* Card hover effects */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode adjustments for the uptime display */
+.dark-mode .card {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+.dark-mode .card-header {
+    background-color: #1a202c;
+    border-color: #4a5568;
+}
+
+.dark-mode .text-success {
+    color: #68d391 !important;
+}
+
+.dark-mode .text-warning {
+    color: #f6ad55 !important;
+}
+
+.dark-mode .text-danger {
+    color: #fc8181 !important;
+}

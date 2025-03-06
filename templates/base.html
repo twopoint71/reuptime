@@ -9,6 +9,10 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <!-- Immediate dark mode script -->
     <script>
+        if (localStorage.getItem('darkMode') === null) {
+            localStorage.setItem('darkMode', 'enabled');
+        }
+
 	    // Check for dark mode preference (localStorage is faster than cookies)
 	    if (localStorage.getItem('darkMode') === 'enabled') {
 		document.documentElement.classList.add('dark-mode-preload');
@@ -44,12 +48,14 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a>
                     </li>
+		    <!-- TODO: convert host_list and deleted_hosts to monitored_hosts and unmonitored_hosts
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/monitored_hosts' %}active{% endif %}" href="/monitored_hosts">Monitored Hosts</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/unmonitored_hosts' %}active{% endif %}" href="/unmonitored_hosts">Unmonitored Hosts</a>
                     </li>
+		    -->
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/host_list' %}active{% endif %}" href="/host_list">Hosts List</a>
                     </li>
