@@ -131,7 +131,7 @@ def register_host_routes(app):
                     f.write(f"[ERROR] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Failed to create RRD file for host ID {host_id}: {str(e)}\n")
             
             # Redirect to the main page with a success parameter
-            return redirect(url_for('index', host_added=request.form['host_name']))
+            return redirect(url_for('host_list', host_added=request.form['host_name']))
         
         except Exception as e:
             print(f"Error adding host: {str(e)}")  # Add logging for debugging
