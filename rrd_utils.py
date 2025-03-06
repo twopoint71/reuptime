@@ -432,12 +432,36 @@ def initialize_aggregate_rrd_with_defaults(rrd_file, start_time):
 def update_aggregate_rrd(rrd_file, timestamp, hosts_up, hosts_down, uptime_percent):
     """Update aggregate RRD database with standardized error handling."""
     try:
+        # Make sure all values are properly formatted
+        hosts_up = int(hosts_up)
+        hosts_down = int(hosts_down)
+        uptime_percent = float(uptime_percent)
+        
+        # Create the update string with all three values
         update_string = f'{timestamp}:{hosts_up}:{hosts_down}:{uptime_percent}'
         print(f"Updating aggregate RRD with: {update_string}")
+        
+        # Update the RRD file
         rrdtool.update(rrd_file, update_string)
         return True
     except Exception as e:
-        print(f"Error updating aggregate RRD file: {str(e)}")
+        error_msg = str(e)
+        print(f"Error updating aggregate RRD file: {error_msg}")
+        
+        # If the error is about the number of data sources, the RRD file might have the wrong structure
+        if "expected 3 data source readings" in error_msg and os.path.exists(rrd_file):
+            print(f"RRD file has incorrect structure. Attempting to recreate it.")
+            try:
+                # Rename the old file instead of deleting it
+                backup_file = f"{rrd_file}.bak"
+                os.rename(rrd_file, backup_file)
+                print(f"Backed up old RRD file to {backup_file}")
+                
+                # The file will be recreated next time get_aggregate_uptime is called
+                return False
+            except Exception as rename_error:
+                print(f"Error backing up RRD file: {str(rename_error)}")
+        
         import traceback
         traceback.print_exc()
         return False

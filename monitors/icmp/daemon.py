@@ -261,7 +261,15 @@ def get_aggregate_uptime():
         
         # Update the RRD file with current values
         logger.debug(f"Updating aggregate RRD at {aligned_timestamp} with values: hosts_up={hosts_up}, hosts_down={hosts_down}, uptime_percent={uptime_percent}")
-        success = update_aggregate_rrd(aggregate_rrd, aligned_timestamp, hosts_up, hosts_down, uptime_percent)
+        
+        # Make sure we're passing all three values
+        success = update_aggregate_rrd(
+            aggregate_rrd,
+            aligned_timestamp,
+            hosts_up,
+            hosts_down,
+            uptime_percent
+        )
         
         if success:
             logger.debug(f"Successfully updated aggregate uptime RRD")
