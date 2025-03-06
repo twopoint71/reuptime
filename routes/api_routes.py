@@ -352,7 +352,7 @@ def register_api_routes(app):
             }
             
             return jsonify({
-                'current_uptime': round(current_uptime, 2),
+                'current_uptime': f"{current_uptime:.2f}",
                 'chart_data': chart_data
             })
         
