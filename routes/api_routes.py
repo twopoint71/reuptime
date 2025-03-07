@@ -105,18 +105,18 @@ def register_api_routes(app):
             
         return jsonify(hosts_list)
     
-    @app.route('/api/deleted_hosts')
-    def get_deleted_hosts_data():
-        """API endpoint to fetch all deleted hosts data in JSON format"""
+    @app.route('/api/unmonitored_hosts')
+    def get_unmonitored_hosts_data():
+        """API endpoint to fetch all unmonitored hosts data in JSON format"""
         with get_db(app.config) as db:
-            deleted_hosts = db.execute('SELECT * FROM deleted_hosts ORDER BY deleted_at DESC').fetchall()
+            unmonitored_hosts = db.execute('SELECT * FROM unmonitored_hosts ORDER BY unmonitored_at DESC').fetchall()
             
         # Convert hosts to a list of dictionaries
         hosts_list = []
-        for host in deleted_hosts:
+        for host in unmonitored_hosts:
             host_dict = dict(host)
             # Convert datetime objects to strings
-            for key in ['created_at', 'last_check', 'deleted_at']:
+            for key in ['created_at', 'last_check', 'unmonitored_at']:
                 if host_dict[key] and not isinstance(host_dict[key], str):
                     host_dict[key] = host_dict[key].strftime('%Y-%m-%d %H:%M:%S')
             
@@ -124,7 +124,7 @@ def register_api_routes(app):
             required_fields = [
                 'id', 'account_label', 'account_id', 'region',
                 'host_id', 'host_ip_address', 'host_name',
-                'created_at', 'last_check', 'is_active', 'deleted_at'
+                'created_at', 'last_check', 'is_active', 'unmonitored_at'
             ]
             
             for field in required_fields:
@@ -137,31 +137,31 @@ def register_api_routes(app):
     
     @app.route('/api/restore_host', methods=['POST'])
     def restore_host_api():
-        """API endpoint to restore a deleted host"""
+        """API endpoint to restore an unmonitored host"""
         data = request.json
         if not data or 'host_id' not in data:
             return jsonify({'success': False, 'error': 'Host ID is required'}), 400
         
         host_id = data['host_id']
         
-        # Call the existing undo_delete function
+        # Call the existing restore_host function
         from routes.host_routes import register_host_routes
-        # Get the undo_delete function from the app
-        undo_delete = app.view_functions.get('undo_delete')
-        if undo_delete:
-            response = undo_delete(host_id)
+        # Get the restore_host function from the app
+        restore_host = app.view_functions.get('restore_host')
+        if restore_host:
+            response = restore_host(host_id)
             
             # If the response is a tuple, it means there was an error
             if isinstance(response, tuple):
                 return response
             
-            return response  # Return the JSON response from undo_delete
+            return response  # Return the JSON response from restore_host
         else:
-            return jsonify({'success': False, 'error': 'undo_delete function not found'}), 500
+            return jsonify({'success': False, 'error': 'restore_host function not found'}), 500
     
     @app.route('/api/permanently_delete_host', methods=['POST'])
     def permanently_delete_host():
-        """API endpoint to permanently delete a host from deleted_hosts table"""
+        """API endpoint to permanently delete a host from unmonitored_hosts table"""
         data = request.json
         if not data or 'host_id' not in data:
             return jsonify({'success': False, 'error': 'Host ID is required'}), 400
@@ -170,12 +170,12 @@ def register_api_routes(app):
         
         with get_db(app.config) as db:
             # Check if the host exists
-            host = db.execute('SELECT * FROM deleted_hosts WHERE id = ?', (host_id,)).fetchone()
+            host = db.execute('SELECT * FROM unmonitored_hosts WHERE id = ?', (host_id,)).fetchone()
             if not host:
                 return jsonify({'success': False, 'error': 'Host not found'}), 404
             
-            # Delete the host from deleted_hosts table
-            db.execute('DELETE FROM deleted_hosts WHERE id = ?', (host_id,))
+            # Delete the host from unmonitored_hosts table
+            db.execute('DELETE FROM unmonitored_hosts WHERE id = ?', (host_id,))
             db.commit()
             
             return jsonify({'success': True})

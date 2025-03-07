@@ -1,3 +1,42 @@
+var utils = {
+    actionDelay: function() {
+        self = this;
+        self.callback = null;
+        self.data = null;
+        self.savedText = null;
+        self.seconds = null;
+        self.target = null;
+        self.timeoutId = null;
+
+        self.cancelDelay = function() {
+            self.target.innerHTML = self.savedText;
+            clearTimeout(self.timeoutId);
+        },
+
+        self.initiateDelay = function(event) {
+            self.target = event.target;
+            self.target.addEventListener('mouseup', self.cancelDelay, false);
+            self.target.addEventListener('mouseleave', self.cancelDelay, false);
+            self.savedText = self.target.innerHTML;
+            self.seconds = 2;
+            self.target.style.width = Math.ceil(self.target.getBoundingClientRect().width) + 'px';
+            self.delay();
+        }
+
+        self.delay = function() {
+            self.target.innerHTML = self.seconds;
+            self.timeoutId = setTimeout(() => {
+                if (self.seconds < 2) {
+                    self.callback(self.data);
+                } else {
+                    self.seconds--;
+                    self.delay();
+                }
+            }, 1000);
+        }
+    }
+}
+
 // Function to create or update a chart
 function createOrUpdateChart(canvasId, hostId, timeRange = '24h') {
     const ctx = document.getElementById(canvasId).getContext('2d');
@@ -250,7 +289,7 @@ function initializeHostsTable() {
                                 </dl>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-danger" onclick="deleteHost(${host.id}, '${host.host_name}')">Delete Host</button>
+                                <button type="button" class="btn btn-danger" onclick="unmonitorHost(${host.id}, '${host.host_name}')">Unmonitor Host</button>
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                             </div>
                         </div>
@@ -331,9 +370,9 @@ function initializeHostsTable() {
         });
 }
 
-// Function to delete a host
-function deleteHost(hostId, hostName) {
-    fetch(`/delete_host/${hostId}`, {
+// Function to unmonitor a host
+function unmonitorHost(hostId, hostName) {
+    fetch(`/unmonitor_host/${hostId}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -342,25 +381,25 @@ function deleteHost(hostId, hostName) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Store the deleted host ID for potential undo
-            // window.lastDeletedHostId = hostId;
+            // Store the unmonitored host ID for potential undo
+            window.lastUnmonitoredHostId = hostId;
             
-            // Get the ID of the entry in the deleted_hosts table
-            fetch('/api/deleted_hosts')
+            // Get the ID of the entry in the unmonitored_hosts table
+            fetch('/api/unmonitored_hosts')
                 .then(response => response.json())
-                .then(deletedHosts => {
-                    // Find the most recently deleted host that matches our original host ID
-                    // We're looking for the host that was just deleted
-                    const recentlyDeletedHost = deletedHosts.find(host => 
-                        host.host_id === data.deleted_host_data.host_id &&
-                        host.host_name === data.deleted_host_data.host_name
+                .then(unmonitoredHosts => {
+                    // Find the most recently unmonitored host that matches our original host ID
+                    // We're looking for the host that was just unmonitored
+                    const recentlyUnmonitoredHost = unmonitoredHosts.find(host => 
+                        host.host_id === data.unmonitored_host_data.host_id &&
+                        host.host_name === data.unmonitored_host_data.host_name
                     );
                     
-                    if (recentlyDeletedHost) {
-                        window.lastDeletedHostId = recentlyDeletedHost.id;
+                    if (recentlyUnmonitoredHost) {
+                        window.lastUnmonitoredHostId = recentlyUnmonitoredHost.id;
                         
                         // Update the toast message with the host name
-                        document.getElementById('deletedHostName').textContent = hostName || 'Host';
+                        document.getElementById('unmonitoredHostName').textContent = hostName || 'Host';
                         
                         // Show the undo toast
                         const undoToast = new bootstrap.Toast(document.getElementById('undoToast'));
@@ -368,7 +407,7 @@ function deleteHost(hostId, hostName) {
                     }
                 })
                 .catch(error => {
-                    console.error('Error fetching deleted hosts:', error);
+                    console.error('Error fetching unmonitored hosts:', error);
                 });
             
             // Close any open modals
@@ -383,19 +422,19 @@ function deleteHost(hostId, hostName) {
             // Refresh the hosts table
             initializeHostsTable();
         } else {
-            alert('Failed to delete host: ' + data.error);
+            alert('Failed to unmonitor host: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to delete host');
+        alert('Failed to unmonitor host');
     });
 }
 
-// Function to undo a host deletion
-function undoDelete() {
-    if (window.lastDeletedHostId) {
-        fetch(`/undo_delete/${window.lastDeletedHostId}`, {
+// Function to restore host to a monitored state
+function restoreHost(hostId) {
+    if (window.lastUnmonitoredHostId) {
+        fetch(`/restore_host/${window.lastUnmonitoredHostId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -420,17 +459,17 @@ function undoDelete() {
                 // Refresh the hosts table
                 initializeHostsTable();
             } else {
-                console.error('Failed to undo deletion:', data.error);
-                alert('Failed to undo deletion: ' + data.error);
+                console.error('Failed to restore host:', data.error);
+                alert('Failed to restore host: ' + data.error);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to undo deletion: ' + error.message);
+            alert('Failed to restore host: ' + error.message);
         });
     } else {
-        console.error('No deleted host ID found');
-        alert('Cannot undo: No recently deleted host found');
+        console.error('No unmonitored host ID found');
+        alert('Cannot restore: No recently unmonitored host found');
     }
 }
 
@@ -605,7 +644,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (undoLink) {
         undoLink.addEventListener('click', function(e) {
             e.preventDefault();
-            undoDelete();
+            restoreHost(window.lastUnmonitoredHostId);
         });
     }
     

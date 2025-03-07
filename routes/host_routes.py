@@ -151,18 +151,18 @@ def register_host_routes(app):
             'is_active': 1 if success else 0
         })
     
-    @app.route('/delete_host/<int:host_id>', methods=['POST'])
-    def delete_host(host_id):
-        """Delete a host and its associated RRD database."""
+    @app.route('/unmonitor_host/<int:host_id>', methods=['POST'])
+    def unmonitor_host(host_id):
+        """Unmonitor a host and its associated RRD database."""
         with get_db(app.config) as db:
-            # Get the host to delete
+            # Get the host to unmonitor
             host = db.execute('SELECT * FROM hosts WHERE id = ?', (host_id,)).fetchone()
             if not host:
                 return jsonify({'success': False, 'error': 'Host not found'}), 404
             
-            # Store host data in deleted_hosts table
+            # Store host data in unmonitored_hosts table
             db.execute('''
-                INSERT INTO deleted_hosts (
+                INSERT INTO unmonitored_hosts (
                     account_label, account_id, region,
                     host_id, host_ip_address, host_name,
                     created_at, last_check, is_active
@@ -184,11 +184,10 @@ def register_host_routes(app):
             if os.path.exists(rrd_file):
                 os.remove(rrd_file)
             
-            # Delete host from database
             db.execute('DELETE FROM hosts WHERE id = ?', (host_id,))
             db.commit()
             
-            # Return the deleted host data in the response
+            # Return the unmonitored host data in the response
             host_dict = dict(host)
             # Convert datetime objects to strings
             for key in ['created_at', 'last_check']:
@@ -197,17 +196,17 @@ def register_host_routes(app):
             
             return jsonify({
                 'success': True, 
-                'deleted_host_data': host_dict
+                'unmonitored_host_data': host_dict
             })
     
-    @app.route('/undo_delete/<int:host_id>', methods=['POST'])
-    def undo_delete(host_id):
-        """Restore the last deleted host."""
+    @app.route('/restore_host/<int:host_id>', methods=['POST'])
+    def restore_host(host_id):
+        """Restore the last unmonitored host."""
         with get_db(app.config) as db:
-            # Get the deleted host
-            deleted_host = db.execute('SELECT * FROM deleted_hosts WHERE id = ?', (host_id,)).fetchone()
+            # Get the unmonitored host
+            unmonitored_host = db.execute('SELECT * FROM unmonitored_hosts WHERE id = ?', (host_id,)).fetchone()
             
-            if not deleted_host:
+            if not unmonitored_host:
                 return jsonify({'success': False, 'error': 'No host to restore'}), 404
             
             try:
@@ -219,23 +218,23 @@ def register_host_routes(app):
                         created_at, last_check, is_active
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    deleted_host['account_label'],
-                    deleted_host['account_id'],
-                    deleted_host['region'],
-                    deleted_host['host_id'],
-                    deleted_host['host_ip_address'],
-                    deleted_host['host_name'],
-                    deleted_host['created_at'],
-                    deleted_host['last_check'],
-                    deleted_host['is_active']
+                    unmonitored_host['account_label'],
+                    unmonitored_host['account_id'],
+                    unmonitored_host['region'],
+                    unmonitored_host['host_id'],
+                    unmonitored_host['host_ip_address'],
+                    unmonitored_host['host_name'],
+                    unmonitored_host['created_at'],
+                    unmonitored_host['last_check'],
+                    unmonitored_host['is_active']
                 ))
                 restored_id = cursor.lastrowid
                 
                 # Initialize RRD database for the restored host
                 init_rrd(restored_id, app.config)
                 
-                # Remove the host from deleted_hosts
-                db.execute('DELETE FROM deleted_hosts WHERE id = ?', (host_id,))
+                # Remove the host from unmonitored_hosts
+                db.execute('DELETE FROM unmonitored_hosts WHERE id = ?', (host_id,))
                 db.commit()
                 
                 # Return the restored host ID

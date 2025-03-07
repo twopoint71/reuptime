@@ -16,9 +16,9 @@ def register_static_routes(app):
     def admin():
 	    return render_template('admin.html')
 
-    @app.route('/deleted_hosts')
-    def deleted_hosts():
-	    return render_template('deleted_hosts.html')
+    @app.route('/unmonitored_hosts')
+    def unmonitored_hosts():
+	    return render_template('unmonitored_hosts.html')
 
     @app.route('/host_list')
     def host_list():

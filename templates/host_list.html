@@ -117,17 +117,17 @@
     <!-- Modals will be dynamically added here -->
 </div>
 
-<!-- Undo Delete Toast -->
+<!-- Undo Unmonitor Toast -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     <div id="undoToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="10000">
         <div class="toast-header">
-            <strong class="me-auto">Host Deleted</strong>
+            <strong class="me-auto">Host Unmonitored</strong>
             <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
         <div class="toast-body">
-            <span id="deletedHostName"></span> has been deleted and moved to the deleted hosts list. 
+            <span id="unmonitoredHostName"></span> has been unmonitored and moved to the unmonitored hosts list. 
             <a href="#" id="undoLink">Undo</a> or view all 
-            <a href="/deleted_hosts">deleted hosts</a>.
+            <a href="/unmonitored_hosts">unmonitored hosts</a>.
         </div>
     </div>
 </div>

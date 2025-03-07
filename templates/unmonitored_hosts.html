@@ -1,25 +1,25 @@
 {% extends 'base.html' %}
 
-{% block title %}Deleted Hosts - ReUptime{% endblock %}
+{% block title %}Unmonitored Hosts - ReUptime{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>Deleted Hosts</h1>
+    <h1>Unmonitored Hosts</h1>
 </div>
 
 <div class="card">
     <div class="card-header">
-        Deleted Hosts
+        Unmonitored Hosts
     </div>
     <div class="card-body">
-        <table class="table" id="deletedHostsTable">
+        <table class="table" id="unmonitoredHostsTable">
             <thead>
                 <tr>
                     <th>Name</th>
                     <th>IP</th>
                     <th>Region</th>
                     <th>Status</th>
-                    <th>Deleted At</th>
+                    <th>Unmonitored At</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -35,5 +35,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/deleted_hosts.js"></script>
+<script src="/static/js/unmonitored_hosts.js"></script>
 {% endblock %} 

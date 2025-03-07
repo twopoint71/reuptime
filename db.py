@@ -64,9 +64,9 @@ def init_db(config):
             )
         ''')
         
-        # Create deleted_hosts table
+        # Create unmonitored_hosts table
         db.execute('''
-            CREATE TABLE IF NOT EXISTS deleted_hosts (
+            CREATE TABLE IF NOT EXISTS unmonitored_hosts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 account_label TEXT,
                 account_id TEXT,
@@ -77,7 +77,7 @@ def init_db(config):
                 created_at TIMESTAMP,
                 last_check TIMESTAMP,
                 is_active INTEGER,
-                deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                unmonitored_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         db.commit() 

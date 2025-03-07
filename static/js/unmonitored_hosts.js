@@ -1,14 +1,14 @@
-// Function to fetch deleted hosts from the API
-async function fetchDeletedHosts() {
+// Function to fetch unmonitored hosts from the API
+async function fetchUnmonitoredHosts() {
     try {
-        const response = await fetch('/api/deleted_hosts');
+        const response = await fetch('/api/unmonitored_hosts');
         if (!response.ok) {
-            throw new Error('Failed to fetch deleted hosts');
+            throw new Error('Failed to fetch unmonitored hosts');
         }
         const data = await response.json();
         return data;
     } catch (error) {
-        console.error('Error fetching deleted hosts:', error);
+        console.error('Error fetching unmonitored hosts:', error);
         return [];
     }
 }
@@ -48,15 +48,21 @@ function showToast(message, type = 'success') {
     });
 }
 
-// Function to restore a deleted host
-async function restoreHost(hostId) {
+async function initiateRestoreHost(event) {
+    var delay = new utils.actionDelay();
+    delay.data = { "hostId": event.target.getAttribute('data-host-id') };
+    delay.callback = restoreHost;
+    delay.initiateDelay(event);
+}
+
+async function restoreHost(params) {
     try {
         const response = await fetch('/api/restore_host', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ host_id: hostId }),
+            body: JSON.stringify({ host_id: params.hostId }),
         });
         
         const data = await response.json();
@@ -65,8 +71,8 @@ async function restoreHost(hostId) {
             throw new Error(data.error || 'Failed to restore host');
         }
         
-        // Refresh the deleted hosts table
-        initializeDeletedHostsTable();
+        // Refresh the unmonitored hosts table
+        populateUnmonitoredHostsTable();
         
         // Show success message with toast
         showToast('Host restored successfully!', 'success');
@@ -74,22 +80,28 @@ async function restoreHost(hostId) {
         // Redirect to main page after a short delay
         setTimeout(() => {
             window.location.href = '/';
-        }, 1500);
+        }, 3000);
     } catch (error) {
         console.error('Error restoring host:', error);
         showToast('Failed to restore host: ' + error.message, 'danger');
     }
 }
 
-// Function to permanently delete a host
-async function permanentlyDeleteHost(hostId) {
+async function initiateDeleteHost(event) {
+    var delay = new utils.actionDelay();
+    delay.data = { "hostId": event.target.getAttribute('data-host-id') };
+    delay.callback = permanentlyDeleteHost;
+    delay.initiateDelay(event);
+}
+
+async function permanentlyDeleteHost(params) {
     try {
         const response = await fetch('/api/permanently_delete_host', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ host_id: hostId }),
+            body: JSON.stringify({ host_id: params.hostId }),
         });
         
         const data = await response.json();
@@ -99,7 +111,7 @@ async function permanentlyDeleteHost(hostId) {
         }
         
         // Refresh the deleted hosts table
-        initializeDeletedHostsTable();
+        populateUnmonitoredHostsTable();
         
         // Show success message with toast
         showToast('Host permanently deleted!', 'success');
@@ -109,28 +121,28 @@ async function permanentlyDeleteHost(hostId) {
     }
 }
 
-// Function to initialize the deleted hosts table
-async function initializeDeletedHostsTable() {
-    const deletedHosts = await fetchDeletedHosts();
-    const tableBody = document.querySelector('#deletedHostsTable tbody');
+// Function to initialize the unmonitored hosts table
+async function populateUnmonitoredHostsTable() {
+    const unmonitoredHosts = await fetchUnmonitoredHosts();
+    const tableBody = document.querySelector('#unmonitoredHostsTable tbody');
     
     // Clear existing rows
     tableBody.innerHTML = '';
     
-    if (deletedHosts.length === 0) {
+    if (unmonitoredHosts.length === 0) {
         const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="6" class="text-center">No deleted hosts found</td>';
+        row.innerHTML = '<td colspan="6" class="text-center">No unmonitored hosts found</td>';
         tableBody.appendChild(row);
         return;
     }
     
-    // Add rows for each deleted host
-    deletedHosts.forEach(host => {
+    // Add rows for each unmonitored host
+    unmonitoredHosts.forEach(host => {
         const row = document.createElement('tr');
         
-        // Format the deleted_at date
-        const deletedAt = new Date(host.deleted_at);
-        const formattedDate = deletedAt.toLocaleString();
+        // Format the unmonitored_at date
+        const unmonitoredAt = new Date(host.unmonitored_at);
+        const formattedDate = unmonitoredAt.toLocaleString();
         
         // Determine status text and class
         const statusText = host.is_active ? 'Active' : 'Inactive';
@@ -153,17 +165,11 @@ async function initializeDeletedHostsTable() {
     
     // Add event listeners to the restore and delete buttons
     document.querySelectorAll('.restore-btn').forEach(button => {
-        button.addEventListener('click', (event) => {
-            const hostId = event.target.getAttribute('data-host-id');
-            restoreHost(hostId);
-        });
+        button.addEventListener('mousedown', initiateRestoreHost);
     });
     
     document.querySelectorAll('.delete-btn').forEach(button => {
-        button.addEventListener('click', (event) => {
-            const hostId = event.target.getAttribute('data-host-id');
-            permanentlyDeleteHost(hostId);
-        });
+        button.addEventListener('mousedown', initiateDeleteHost);
     });
 }
 
@@ -287,9 +293,9 @@ function initializeDarkMode() {
     }
 }
 
-// Initialize the deleted hosts table when the page loads
+// Initialize the unmonitored hosts table when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    initializeDeletedHostsTable();
+    populateUnmonitoredHostsTable();
     initializeDarkMode();
     
     // Create toast container if it doesn't exist
