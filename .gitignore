@@ -17,6 +17,7 @@ instance/
 
 # Project specific
 rrd/*.rrd
+rrd/*.backup
 monitors/icmp/daemon.pid
 monitors/icmp/icmp_monitor.log
 monitors/icmp/daemon_status.json
