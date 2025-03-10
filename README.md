@@ -22,8 +22,8 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
 
 2. Set up a virtual environment:
    ```
-   python -m venv .venv
-   source .venv/bin/activate
+   python -m venv .reuptime
+   source .reuptime/bin/activate
    ```
 
 3. Install dependencies:
@@ -83,15 +83,15 @@ For more detailed documentation, please see the [docs](./docs) directory:
 ## Tips
 If the ping service is run in user space, it may fail due to permissions.
 Check if cap_net_raw is available with
-    
+
     getcap /bin/ping
-    
+
 If cap_net_raw permissions are not available, try the following command to allow the permission in user space.
-    
+
 	sudo setcap cap_net_raw+p /bin/ping
-    
+
 Use this header CSV file imports:
-   
+
     "Account Label","Account Id","Region","Host Id","Host IP Address","Hostname"
 
 ## License
