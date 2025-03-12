@@ -1,5 +1,6 @@
+// @ts-nocheck
 var utils = {
-    actionDelay: function() {
+    "actionDelay": function() {
         self = this;
         self.callback = null;
         self.data = null;
@@ -13,7 +14,7 @@ var utils = {
             clearTimeout(self.timeoutId);
         },
 
-        self.initiateDelay = function(event) {
+        self.initiateDelay = function() {
             self.target = event.target;
             self.target.addEventListener('mouseup', self.cancelDelay, false);
             self.target.addEventListener('mouseleave', self.cancelDelay, false);
@@ -34,18 +35,63 @@ var utils = {
                 }
             }, 1000);
         }
+    },
+
+    "html": {
+        "div": function(content="") {
+            var ele = document.createElement('div');
+            ele.append(content);
+            return ele;
+        },
+        "select": function(content="") {
+            var ele = document.createElement('select');
+            ele.append(content);
+            return ele;
+        },
+        "option": function(content="", value="") {
+            var ele = document.createElement('option');
+            ele.append(content);
+            ele.setAttribute("value", value);
+            return ele;
+        },
+        "span": function(content="") {
+            var ele = document.createElement('span');
+            ele.append(content);
+            return ele;
+        }
+    },
+
+    // order can be ASC(ending) or DESC(ending)
+    "tableColumnSort": function(event) {
+        var self = this;
+        self.columnIndex = document.getElementById('sortBy').value;
+        self.order =  document.getElementById('orderBy').value;
+        self.tableId = document.getElementById('orderBy').getAttribute('data-table-id');
+        self.tbody = document.querySelector(`#${self.tableId} tbody`);
+        self.rows = Array.from(self.tbody.querySelectorAll('tr'));
+
+        // untested with numerical data, all table data for this project is strings
+        self.rows.sort((rowX, rowZ) => {
+            cellX = rowX.querySelector(`td:nth-child(${self.columnIndex})`).innerText.trim().toString();
+            cellZ = rowZ.querySelector(`td:nth-child(${self.columnIndex})`).innerText.trim().toString();
+
+            return (cellX > cellZ ? 1 : -1) * (self.order == 'ASC' ? 1 : -1);
+        });
+
+        self.rows.forEach((row) => self.tbody.appendChild(row));
     }
+
 }
 
 // Function to create or update a chart
 function createOrUpdateChart(canvasId, hostId, timeRange = '24h') {
     const ctx = document.getElementById(canvasId).getContext('2d');
     let chart = Chart.getChart(canvasId);
-    
+
     if (chart) {
         chart.destroy();
     }
-    
+
     // Fetch data from API with time range parameter
     fetch(`/api/metrics/${hostId}?range=${timeRange}&t=${Date.now()}`)
         .then(response => response.json())
@@ -107,13 +153,13 @@ function stopChartRefresh(intervalId) {
 function setupGraphModals() {
     // Get all graph buttons
     const graphButtons = document.querySelectorAll('.graph-btn');
-    
+
     // Add click event listeners to each button
     graphButtons.forEach(button => {
         const hostId = button.getAttribute('data-host-id');
         const chartId = `metricsChart${hostId}`;
         let refreshIntervalId = null;
-        
+
         button.addEventListener('click', function() {
             // Wait for the modal to be shown before creating the chart
             setTimeout(() => {
@@ -122,14 +168,14 @@ function setupGraphModals() {
                 const timeRangeSelect = document.getElementById(`timeRange${hostId}`);
                 const refreshIntervalSelect = document.getElementById(`refreshInterval${hostId}`);
                 const autoRefreshToggle = document.getElementById(`autoRefresh${hostId}`);
-                
+
                 // Initial chart creation
                 createOrUpdateChart(chartId, hostId, timeRangeSelect.value);
-                
+
                 // Set up event listeners for controls
                 timeRangeSelect.addEventListener('change', function() {
                     createOrUpdateChart(chartId, hostId, this.value);
-                    
+
                     // If auto-refresh is enabled, restart it with the new time range
                     if (autoRefreshToggle.checked) {
                         if (refreshIntervalId) {
@@ -139,7 +185,7 @@ function setupGraphModals() {
                         refreshIntervalId = startChartRefresh(chartId, hostId, interval, timeRangeSelect.value);
                     }
                 });
-                
+
                 refreshIntervalSelect.addEventListener('change', function() {
                     // If auto-refresh is enabled, restart it with the new interval
                     if (autoRefreshToggle.checked) {
@@ -150,7 +196,7 @@ function setupGraphModals() {
                         refreshIntervalId = startChartRefresh(chartId, hostId, interval, timeRangeSelect.value);
                     }
                 });
-                
+
                 autoRefreshToggle.addEventListener('change', function() {
                     if (this.checked) {
                         // Start auto-refresh
@@ -166,19 +212,19 @@ function setupGraphModals() {
                         refreshIntervalSelect.disabled = true;
                     }
                 });
-                
+
                 // Clean up when modal is hidden
                 modal.addEventListener('hidden.bs.modal', function() {
                     if (refreshIntervalId) {
                         stopChartRefresh(refreshIntervalId);
                         refreshIntervalId = null;
                     }
-                    
+
                     // Reset auto-refresh toggle
                     if (autoRefreshToggle) {
                         autoRefreshToggle.checked = false;
                     }
-                    
+
                     // Reset refresh interval select
                     if (refreshIntervalSelect) {
                         refreshIntervalSelect.disabled = true;
@@ -196,10 +242,10 @@ function initializeHostsTable() {
         .then(hosts => {
             const tableBody = document.querySelector('#hostsTable tbody');
             if (!tableBody) return;
-            
+
             // Clear existing table rows
             tableBody.innerHTML = '';
-            
+
             // Create modals container if it doesn't exist
             let modalsContainer = document.getElementById('modalsContainer');
             if (!modalsContainer) {
@@ -209,12 +255,12 @@ function initializeHostsTable() {
             } else {
                 modalsContainer.innerHTML = '';
             }
-            
+
             // Add each host to the table
             hosts.forEach(host => {
                 // Create table row
                 const row = document.createElement('tr');
-                
+
                 // Add host data to row
                 row.innerHTML = `
                     <td>${host.host_name}</td>
@@ -236,9 +282,9 @@ function initializeHostsTable() {
                         </button>
                     </td>
                 `;
-                
+
                 tableBody.appendChild(row);
-                
+
                 // Create details modal
                 const detailsModal = document.createElement('div');
                 detailsModal.className = 'modal fade';
@@ -246,7 +292,7 @@ function initializeHostsTable() {
                 detailsModal.setAttribute('tabindex', '-1');
                 detailsModal.setAttribute('aria-labelledby', `hostDetailsLabel${host.id}`);
                 detailsModal.setAttribute('aria-hidden', 'true');
-                
+
                 detailsModal.innerHTML = `
                     <div class="modal-dialog">
                         <div class="modal-content">
@@ -258,32 +304,32 @@ function initializeHostsTable() {
                                 <dl class="row">
                                     <dt class="col-sm-4">Account Label</dt>
                                     <dd class="col-sm-8">${host.account_label}</dd>
-                                    
+
                                     <dt class="col-sm-4">Account ID</dt>
                                     <dd class="col-sm-8">${host.account_id}</dd>
-                                    
+
                                     <dt class="col-sm-4">Region</dt>
                                     <dd class="col-sm-8">${host.region}</dd>
-                                    
+
                                     <dt class="col-sm-4">Instance ID</dt>
                                     <dd class="col-sm-8">${host.host_id}</dd>
-                                    
+
                                     <dt class="col-sm-4">Instance IP</dt>
                                     <dd class="col-sm-8">${host.host_ip_address}</dd>
-                                    
+
                                     <dt class="col-sm-4">Instance Name</dt>
                                     <dd class="col-sm-8">${host.host_name}</dd>
-                                    
+
                                     <dt class="col-sm-4">Status</dt>
                                     <dd class="col-sm-8">
                                         <span class="badge ${host.is_active ? 'bg-success' : 'bg-danger'}">
                                             ${host.is_active ? 'UP' : 'DOWN'}
                                         </span>
                                     </dd>
-                                    
+
                                     <dt class="col-sm-4">Last Check</dt>
                                     <dd class="col-sm-8">${host.last_check || 'Never'}</dd>
-                                    
+
                                     <dt class="col-sm-4">Created At</dt>
                                     <dd class="col-sm-8">${host.created_at}</dd>
                                 </dl>
@@ -295,9 +341,9 @@ function initializeHostsTable() {
                         </div>
                     </div>
                 `;
-                
+
                 modalsContainer.appendChild(detailsModal);
-                
+
                 // Create graph modal
                 const graphModal = document.createElement('div');
                 graphModal.className = 'modal fade';
@@ -305,7 +351,7 @@ function initializeHostsTable() {
                 graphModal.setAttribute('tabindex', '-1');
                 graphModal.setAttribute('aria-labelledby', `graphModalLabel${host.id}`);
                 graphModal.setAttribute('aria-hidden', 'true');
-                
+
                 graphModal.innerHTML = `
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
@@ -358,12 +404,13 @@ function initializeHostsTable() {
                         </div>
                     </div>
                 `;
-                
+
                 modalsContainer.appendChild(graphModal);
             });
-            
+
             // Set up event listeners for the graph buttons
             setupGraphModals();
+            utils.tableColumnSort();
         })
         .catch(error => {
             console.error('Error fetching hosts:', error);
@@ -383,24 +430,24 @@ function unmonitorHost(hostId, hostName) {
         if (data.success) {
             // Store the unmonitored host ID for potential undo
             window.lastUnmonitoredHostId = hostId;
-            
+
             // Get the ID of the entry in the unmonitored_hosts table
             fetch('/api/unmonitored_hosts')
                 .then(response => response.json())
                 .then(unmonitoredHosts => {
                     // Find the most recently unmonitored host that matches our original host ID
                     // We're looking for the host that was just unmonitored
-                    const recentlyUnmonitoredHost = unmonitoredHosts.find(host => 
+                    const recentlyUnmonitoredHost = unmonitoredHosts.find(host =>
                         host.host_id === data.unmonitored_host_data.host_id &&
                         host.host_name === data.unmonitored_host_data.host_name
                     );
-                    
+
                     if (recentlyUnmonitoredHost) {
                         window.lastUnmonitoredHostId = recentlyUnmonitoredHost.id;
-                        
+
                         // Update the toast message with the host name
                         document.getElementById('unmonitoredHostName').textContent = hostName || 'Host';
-                        
+
                         // Show the undo toast
                         const undoToast = new bootstrap.Toast(document.getElementById('undoToast'));
                         undoToast.show();
@@ -409,7 +456,7 @@ function unmonitorHost(hostId, hostName) {
                 .catch(error => {
                     console.error('Error fetching unmonitored hosts:', error);
                 });
-            
+
             // Close any open modals
             const openModals = document.querySelectorAll('.modal.show');
             openModals.forEach(modal => {
@@ -418,7 +465,7 @@ function unmonitorHost(hostId, hostName) {
                     modalInstance.hide();
                 }
             });
-            
+
             // Refresh the hosts table
             initializeHostsTable();
         } else {
@@ -449,13 +496,13 @@ function restoreHost(hostId) {
         .then(data => {
             if (data.success) {
                 console.log('Successfully restored host with ID:', data.restored_host_id);
-                
+
                 // Hide the toast
                 const undoToast = bootstrap.Toast.getInstance(document.getElementById('undoToast'));
                 if (undoToast) {
                     undoToast.hide();
                 }
-                
+
                 // Refresh the hosts table
                 initializeHostsTable();
             } else {
@@ -481,10 +528,10 @@ function toggleDarkMode() {
     const text = document.querySelector('#darkModeToggle span');
     const navbar = document.querySelector('.navbar');
     const darkModeToggle = document.getElementById('darkModeToggle');
-    
+
     // Toggle dark mode class on body
     body.classList.toggle('dark-mode');
-    
+
     // Update icon and localStorage
     if (body.classList.contains('dark-mode')) {
         // Switching to dark mode
@@ -492,13 +539,13 @@ function toggleDarkMode() {
         icon.classList.add('fa-sun');
         if (text) text.textContent = 'Toggle Light Mode';
         localStorage.setItem('darkMode', 'enabled');
-        
+
         // Update navbar classes for dark mode
         if (navbar) {
             navbar.classList.remove('navbar-light', 'bg-light');
             navbar.classList.add('navbar-dark', 'bg-dark');
         }
-        
+
         // Update dark mode toggle button
         if (darkModeToggle) {
             darkModeToggle.classList.remove('btn-outline-secondary');
@@ -510,19 +557,19 @@ function toggleDarkMode() {
         icon.classList.add('fa-moon');
         if (text) text.textContent = 'Toggle Dark Mode';
         localStorage.setItem('darkMode', 'disabled');
-        
+
         // Update navbar classes for light mode
         if (navbar) {
             navbar.classList.remove('navbar-dark', 'bg-dark');
             navbar.classList.add('navbar-light', 'bg-light');
         }
-        
+
         // Update dark mode toggle button
         if (darkModeToggle) {
             darkModeToggle.classList.remove('btn-outline-light');
             darkModeToggle.classList.add('btn-outline-secondary');
         }
-        
+
         // Ensure dark mode classes are removed
         html.classList.remove('dark-mode-preload');
     }
@@ -535,13 +582,13 @@ function initializeDarkMode() {
     const icon = document.querySelector('#darkModeToggle i');
     const text = document.querySelector('#darkModeToggle span');
     const navbar = document.querySelector('.navbar');
-    
+
     // Remove preload class to allow transitions
     setTimeout(() => {
         document.documentElement.classList.remove('dark-mode-preload');
         document.body.classList.remove('dark-mode-preload');
     }, 100);
-    
+
     if (darkMode === 'enabled') {
         // Apply dark mode
         document.body.classList.add('dark-mode');
@@ -550,13 +597,13 @@ function initializeDarkMode() {
             icon.classList.add('fa-sun');
         }
         if (text) text.textContent = 'Toggle Light Mode';
-        
+
         // Update navbar classes for dark mode
         if (navbar) {
             navbar.classList.remove('navbar-light', 'bg-light');
             navbar.classList.add('navbar-dark', 'bg-dark');
         }
-        
+
         // Update dark mode toggle button
         if (darkModeToggle) {
             darkModeToggle.classList.remove('btn-outline-secondary');
@@ -570,20 +617,20 @@ function initializeDarkMode() {
             icon.classList.add('fa-moon');
         }
         if (text) text.textContent = 'Toggle Dark Mode';
-        
+
         // Update navbar classes for light mode
         if (navbar) {
             navbar.classList.remove('navbar-dark', 'bg-dark');
             navbar.classList.add('navbar-light', 'bg-light');
         }
-        
+
         // Update dark mode toggle button
         if (darkModeToggle) {
             darkModeToggle.classList.remove('btn-outline-light');
             darkModeToggle.classList.add('btn-outline-secondary');
         }
     }
-    
+
     // Add event listener to dark mode toggle button
     if (darkModeToggle) {
         // Remove any existing event listeners to prevent duplicates
@@ -603,10 +650,10 @@ function showToast(message, type = 'success') {
         toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
         document.body.appendChild(toastContainer);
     }
-    
+
     // Create a unique ID for the toast
     const toastId = 'toast-' + Date.now();
-    
+
     // Create toast HTML
     const toastHTML = `
     <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
@@ -619,15 +666,15 @@ function showToast(message, type = 'success') {
         </div>
     </div>
     `;
-    
+
     // Add toast to container
     toastContainer.insertAdjacentHTML('beforeend', toastHTML);
-    
+
     // Initialize and show the toast
     const toastElement = document.getElementById(toastId);
     const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
     toast.show();
-    
+
     // Remove toast from DOM after it's hidden
     toastElement.addEventListener('hidden.bs.toast', () => {
         toastElement.remove();
@@ -638,7 +685,7 @@ function showToast(message, type = 'success') {
 document.addEventListener('DOMContentLoaded', function() {
     initializeHostsTable();
     initializeDarkMode();
-    
+
     // Set up event listener for the undo link
     const undoLink = document.querySelector('#undoLink');
     if (undoLink) {
@@ -647,7 +694,7 @@ document.addEventListener('DOMContentLoaded', function() {
             restoreHost(window.lastUnmonitoredHostId);
         });
     }
-    
+
     // Check for host_added parameter in URL
     const urlParams = new URLSearchParams(window.location.search);
     const hostAdded = urlParams.get('host_added');
@@ -657,7 +704,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
     }
-    
+
     // Check for hosts_imported parameter in URL
     const hostsImported = urlParams.get('hosts_imported');
     if (hostsImported) {
@@ -666,4 +713,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
     }
-}); 
+
+    document.querySelectorAll('form select').forEach((ele) => { ele.addEventListener('change', utils.tableColumnSort); });
+});

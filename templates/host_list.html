@@ -5,15 +5,43 @@
 {% block content %}
 <h1>Host Monitoring</h1>
 
-<!-- Action Buttons -->
-<div class="mb-3">
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHostModal">
-        Add Host
-    </button>
-    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importHostsModal">
-        Import Hosts
-    </button>
-</div>
+<!-- Actions -->
+<form>
+    <div class="row mb-3">
+        <div id="actionButtons" class="col-md-6">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHostModal">
+                Add Host
+            </button>
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importHostsModal">
+                Import Hosts
+            </button>
+        </div>
+
+        <div class="col-md-6">
+            <div class="row float-end">
+                <label class="col-sm-auto col-form-label pe-1" for="sortBy">Sort By</label>
+                <div class="col-sm-auto ps-1">
+                    <select id="sortBy" class="form-select" data-table-id="hostsTable">
+                        <option value="5">Host IP Address</option>
+                        <option value="1">Name</option>
+                        <option value="2">IP</option>
+                        <option value="3">Region</option>
+                        <option value="4" selected>Status</option>
+                        <option value="5">Last Check</option>
+                    </select>
+                </div>
+                <label class="col-sm-auto col-form-label pe-1" for="orderBy">Order</label>
+                <div class="col-sm-auto ps-1">
+                    <select id="orderBy" class="form-select" data-table-id="hostsTable">
+                        <option value="ASC" selected>Ascending</option>
+                        <option value="DESC">Descending</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
 
 <!-- Add Host Modal -->
 <div class="modal fade" id="addHostModal" tabindex="-1" aria-labelledby="addHostModalLabel" aria-hidden="true">
@@ -125,10 +153,10 @@
             <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
         <div class="toast-body">
-            <span id="unmonitoredHostName"></span> has been unmonitored and moved to the unmonitored hosts list. 
-            <a href="#" id="undoLink">Undo</a> or view all 
+            <span id="unmonitoredHostName"></span> has been unmonitored and moved to the unmonitored hosts list.
+            <a href="#" id="undoLink">Undo</a> or view all
             <a href="/unmonitored_hosts">unmonitored hosts</a>.
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}
