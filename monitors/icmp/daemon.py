@@ -47,6 +47,13 @@ app_config = {
     'MONITOR_LOG_PATH': os.path.join(os.path.dirname(__file__), 'icmp_monitor.log')
 }
 
+# Add these global variables near the top with other globals
+host_status_totals = {
+    'hosts_up': 0,
+    'hosts_down': 0,
+    'total_hosts': 0
+}
+
 def get_all_hosts():
     """Get all hosts from the database."""
     with get_db(app_config) as db:
@@ -62,12 +69,12 @@ def check_host(host):
     Returns:
         tuple: (success, latency) where success is a boolean and latency is in ms
     """
+    global host_status_totals
     try:
         # Perform ICMP check with shorter timeout (1 second)
-        # Add -W 1 to set the timeout to 1 second
         result = subprocess.run(
             ['ping', '-c', '1', '-W', '2', host['host_ip_address']],
-            capture_output=True, text=True, timeout=2  # Also reduce the subprocess timeout to 2 seconds
+            capture_output=True, text=True, timeout=2
         )
         success = result.returncode == 0
         
@@ -79,6 +86,12 @@ def check_host(host):
                 WHERE id = ?
             ''', (1 if success else 0, host['id']))
             db.commit()
+        
+        # Increment appropriate counter based on current check result
+        if success:
+            host_status_totals['hosts_up'] += 1
+        else:
+            host_status_totals['hosts_down'] += 1
         
         # Extract latency from ping output
         latency = 0
@@ -114,8 +127,8 @@ def check_host(host):
             logger.warning(f"Host {host['host_name']} ({host['host_ip_address']}) is DOWN")
         
         return success, latency
-    except subprocess.TimeoutExpired:
-        logger.warning(f"Ping timeout for host {host['host_name']} (ID: {host['id']})")
+    except (subprocess.TimeoutExpired, Exception) as e:
+        logger.warning(f"Error checking host {host['host_name']} (ID: {host['id']}): {str(e)}")
         with get_db(app_config) as db:
             db.execute('''
                 UPDATE hosts 
@@ -129,21 +142,8 @@ def check_host(host):
         if os.path.exists(rrd_file):
             update_rrd(rrd_file, int(time.time()), 0, 1000)
         
-        return False, 1000
-    except Exception as e:
-        logger.error(f"Error checking host {host['host_name']} (ID: {host['id']}): {str(e)}")
-        with get_db(app_config) as db:
-            db.execute('''
-                UPDATE hosts 
-                SET last_check = CURRENT_TIMESTAMP, is_active = 0
-                WHERE id = ?
-            ''', (host['id'],))
-            db.commit()
-        
-        # Update RRD with 0 uptime and max latency
-        rrd_file = get_rrd_path(host['id'], app_config)
-        if os.path.exists(rrd_file):
-            update_rrd(rrd_file, int(time.time()), 0, 1000)
+        # Update status counts for failures
+        host_status_totals['hosts_down'] += 1
         
         return False, 1000
 
@@ -154,10 +154,16 @@ def check_host_thread(host):
 
 def run_checks():
     """Run checks on all hosts in parallel."""
+    global host_status_totals
     hosts = get_all_hosts()
     if not hosts:
         logger.warning("No hosts found in database")
         return
+    
+    # Reset totals at the start of each check cycle
+    host_status_totals['hosts_up'] = 0
+    host_status_totals['hosts_down'] = 0
+    host_status_totals['total_hosts'] = len(hosts)
     
     logger.info(f"Checking {len(hosts)} hosts...")
     threads = []
@@ -174,11 +180,41 @@ def run_checks():
     
     logger.info(f"Completed checking {len(hosts)} hosts")
     
-    # Spawn a new thread to calculate and store aggregate uptime
-    aggregate_thread = threading.Thread(target=get_aggregate_uptime)
-    aggregate_thread.daemon = True
-    aggregate_thread.start()
-    aggregate_thread.join()  # Wait for the aggregate calculation to complete
+    # Update aggregate RRD with the current totals
+    update_aggregate_stats()
+
+def update_aggregate_stats():
+    """Update aggregate statistics using the current totals."""
+    try:
+        current_time = int(time.time())
+        aligned_timestamp = math.floor(current_time / 20) * 20  # Align to 20-second interval
+        
+        uptime_percent = 0
+        if host_status_totals['total_hosts'] > 0:
+            uptime_percent = round((host_status_totals['hosts_up'] / host_status_totals['total_hosts']) * 100, 2)
+        
+        logger.info(f"Aggregate uptime: {uptime_percent}% (Up: {host_status_totals['hosts_up']}, "
+                   f"Down: {host_status_totals['hosts_down']}, Total: {host_status_totals['total_hosts']})")
+        
+        aggregate_rrd = get_aggregate_rrd_path(app_config)
+        
+        if not os.path.exists(aggregate_rrd):
+            logger.info(f"Creating aggregate uptime RRD file: {aggregate_rrd}")
+            aggregate_rrd = init_aggregate_rrd(app_config)
+        
+        success = update_aggregate_rrd(
+            aggregate_rrd,
+            aligned_timestamp,
+            host_status_totals['hosts_up'],
+            host_status_totals['hosts_down'],
+            uptime_percent
+        )
+        
+        if not success:
+            logger.error("Failed to update aggregate uptime RRD")
+            
+    except Exception as e:
+        logger.error(f"Error updating aggregate stats: {str(e)}", exc_info=True)
 
 def signal_handler(sig, frame):
     """Handle signals to gracefully shut down the daemon."""
@@ -210,74 +246,6 @@ def cleanup():
         logger.info("Daemon cleanup completed")
     except Exception as e:
         logger.error(f"Error during cleanup: {str(e)}")
-
-def get_aggregate_uptime():
-    """
-    Get the aggregate uptime statistics for all hosts and store in a dedicated RRD file.
-    This runs as a separate thread after each monitoring cycle.
-    """
-    try:
-        logger.debug("Starting aggregate uptime calculation")
-        
-        # Get all hosts
-        hosts = get_all_hosts()
-        if not hosts:
-            logger.warning("No hosts found for aggregate uptime calculation")
-            return
-        
-        # Count hosts up and down
-        hosts_up = 0
-        hosts_down = 0
-        total_hosts = len(hosts)
-        
-        # Get the current timestamp aligned to the interval
-        current_time = int(time.time())
-        aligned_timestamp = math.floor(current_time / 20) * 20  # Align to 20-second interval
-        
-        # Check each host's status
-        for host in hosts:
-            if host['is_active']:
-                hosts_up += 1
-            else:
-                hosts_down += 1
-        
-        # Calculate uptime percentage
-        uptime_percent = 0
-        if total_hosts > 0:
-            uptime_percent = round((hosts_up / total_hosts) * 100, 2)
-        
-        logger.info(f"Aggregate uptime: {uptime_percent}% (Up: {hosts_up}, Down: {hosts_down}, Total: {total_hosts})")
-        
-        # Import the necessary functions from rrd_utils
-        from rrd_utils import get_aggregate_rrd_path, init_aggregate_rrd, update_aggregate_rrd
-        
-        # Get the path to the aggregate RRD file
-        aggregate_rrd = get_aggregate_rrd_path(app_config)
-        
-        # Create the RRD file if it doesn't exist
-        if not os.path.exists(aggregate_rrd):
-            logger.info(f"Creating aggregate uptime RRD file: {aggregate_rrd}")
-            aggregate_rrd = init_aggregate_rrd(app_config)
-        
-        # Update the RRD file with current values
-        logger.debug(f"Updating aggregate RRD at {aligned_timestamp} with values: hosts_up={hosts_up}, hosts_down={hosts_down}, uptime_percent={uptime_percent}")
-        
-        # Make sure we're passing all three values
-        success = update_aggregate_rrd(
-            aggregate_rrd,
-            aligned_timestamp,
-            hosts_up,
-            hosts_down,
-            uptime_percent
-        )
-        
-        if success:
-            logger.debug(f"Successfully updated aggregate uptime RRD")
-        else:
-            logger.error(f"Failed to update aggregate uptime RRD")
-        
-    except Exception as e:
-        logger.error(f"Error calculating aggregate uptime: {str(e)}", exc_info=True)
 
 def main():
     """Main function to run the daemon."""
