@@ -195,6 +195,8 @@ async function populateUnmonitoredHostsTable() {
     document.querySelectorAll('.delete-btn').forEach(button => {
         button.addEventListener('mousedown', initiateDeleteHost);
     });
+
+    utils.tableColumnSort();
 }
 
 // Function to toggle dark mode
@@ -329,6 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
         container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
         document.body.appendChild(container);
     }
-    
+
     document.querySelectorAll('form select').forEach((ele) => { ele.addEventListener('change', utils.tableColumnSort); });
 }); 
