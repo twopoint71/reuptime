@@ -3,6 +3,7 @@ import os
 import time
 import json
 import pytz
+import rrdtool
 from datetime import datetime
 from db import get_db
 from utils import read_last_n_lines
@@ -429,4 +430,53 @@ def register_api_routes(app):
         
         except Exception as e:
             print(f"Error calculating aggregate uptime from hosts: {str(e)}")
-            return jsonify({'error': str(e)}), 500 
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/annual_uptime')
+    def get_annual_uptime():
+        """API endpoint to fetch the annual uptime percentage."""
+        try:
+            # Get the aggregate RRD file path
+            aggregate_rrd = get_aggregate_rrd_path(app.config)
+            
+            if not os.path.exists(aggregate_rrd):
+                return jsonify({
+                    'error': 'Aggregate RRD file not found',
+                    'annual_uptime': '100.00'  # Default value if no data
+                }), 404
+
+            rrd_data = rrdtool.fetch(aggregate_rrd, 'AVERAGE', '--start', 'end-1y', '--end', 'now', '--align-start')
+            
+            if not rrd_data or len(rrd_data) < 3:
+                return jsonify({
+                    'error': 'Invalid RRD data structure',
+                    'annual_uptime': '100.00'
+                }), 500            
+            
+            # Process the RRD data
+            time_info, ds_names, data = rrd_data
+            
+            # Filter out None values and get uptime percentages
+            # 2 is HOST_UP column
+            valid_data = [float(val[2]) for val in data if val[2] is not None]  # uptime_percent is at index 2
+            
+            if not valid_data:
+                return jsonify({
+                    'error': 'No valid data points found',
+                    'annual_uptime': '100.00'
+                }), 404
+            
+            # Calculate average uptime
+            annual_uptime = sum(valid_data) / len(valid_data)
+            
+            return jsonify({
+                'annual_uptime': f"{annual_uptime:.2f}",
+                'data_points': len(valid_data)
+            })
+            
+        except Exception as e:
+            logger.error(f"Error calculating annual uptime: {str(e)}")
+            return jsonify({
+                'error': str(e),
+                'annual_uptime': '100.00'
+            }), 500 
