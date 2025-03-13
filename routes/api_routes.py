@@ -4,7 +4,7 @@ import time
 import json
 import pytz
 import rrdtool
-from datetime import datetime
+from datetime import datetime, timedelta
 from db import get_db
 from utils import read_last_n_lines
 from rrd_utils import get_rrd_path, init_rrd, fetch_rrd_data, format_rrd_data_for_chart, get_aggregate_rrd_path, init_aggregate_rrd
@@ -436,6 +436,10 @@ def register_api_routes(app):
     def get_annual_uptime():
         """API endpoint to fetch the annual uptime percentage."""
         try:
+            end_time = datetime.now()
+            start_time = str(int((end_time - timedelta(days=365)).timestamp()))
+            end_time = str(int(end_time.timestamp()))
+
             # Get the aggregate RRD file path
             aggregate_rrd = get_aggregate_rrd_path(app.config)
             
@@ -445,7 +449,7 @@ def register_api_routes(app):
                     'annual_uptime': '100.00'  # Default value if no data
                 }), 404
 
-            rrd_data = rrdtool.fetch(aggregate_rrd, 'AVERAGE', '--start', 'end-1y', '--end', 'now', '--align-start')
+            rrd_data = rrdtool.fetch(aggregate_rrd, 'AVERAGE', '--start', start_time, '--end', end_time, '--align-start')
             
             if not rrd_data or len(rrd_data) < 3:
                 return jsonify({
