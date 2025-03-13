@@ -7,7 +7,7 @@
 
 <div class="row">
     <div class="col-md-6 mb-4">
-        <div id="statusCard" class="card">
+        <div id="statusCard" class="card h-100">
             <div class="card-header">
                 <h5 class="card-title mb-0">ICMP Monitor Daemon Status</h5>
             </div>
@@ -39,6 +39,26 @@
                 <div class="mt-3">
                     <button id="refreshSystemInfoBtn" class="btn btn-primary">Refresh Info</button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Downtime Allotment</h5>
+            </div>
+            <div class="card-body">
+                <p>Bi-weekly downtime allotment for reboots and other maintenance events. Downtime allotment is measured in missed checks. The current monitoring interval is 20 seconds.</p>
+                <p>Example: If desired downtime allotment is 10 minutes, then the downtime allotment is 900 seconds(10 minutes) divided by a 20 second interval which equals 300 missed checks.</p>
+                <form id="downtimeAllotmentForm">
+                    <div class="mb-3">
+                        <label for="downtimeAllotment" class="form-label">Downtime Allotment</label>
+                        <input type="number" class="form-control" id="downtimeAllotment">
+                    </div>
+                    <button type="button" id="saveDowntimeAllotmentBtn" class="btn btn-primary">Save</button>
+                </form>
             </div>
         </div>
     </div>
