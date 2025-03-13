@@ -1,4 +1,4 @@
-from app import app, get_db, init_rrd, get_rrd_path
+from app import app, get_db
 from datetime import datetime, timedelta
 import random
 import rrdtool
@@ -7,12 +7,12 @@ import time
 import sqlite3
 import argparse
 from app import init_db, setup_directories
-from rrd_utils import get_last_update
+from rrd_utils import get_last_update, init_rrd, get_rrd_path
 
 def generate_hosts(refresh_existing=False, num_hosts=10):
     """
     Generate example hosts with metrics.
-    
+
     Args:
         refresh_existing (bool): If True, keep existing hosts and only add new ones if fewer than num_hosts exist.
                                 If False, delete all existing hosts and create new ones.
@@ -20,65 +20,61 @@ def generate_hosts(refresh_existing=False, num_hosts=10):
     """
     with app.app_context():
         # Initialize database and create necessary directories
-        init_db()
-        setup_directories()
-        
+        init_db(app.config)
+        setup_directories(app.config)
+
         # regions (use popular cloud provider regions)
         regions = ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-2', 'sa-east-1']
 
         # Example account labels
         account_labels = ['Production', 'Staging', 'Development', 'Testing', 'QA']
-        
-        with get_db() as db:
+
+        with get_db(app.config) as db:
             # Check if we're refreshing or replacing hosts
             if refresh_existing:
                 # Count existing hosts
                 existing_count = db.execute('SELECT COUNT(*) FROM hosts').fetchone()[0]
                 print(f"Found {existing_count} existing hosts")
-                
+
                 # If we have enough hosts already, just update their metrics
                 if existing_count >= num_hosts:
                     hosts = db.execute('SELECT id, host_name, is_active FROM hosts').fetchall()
                     print(f"Refreshing metrics for {len(hosts)} existing hosts")
-                    
+
                     for host in hosts:
                         update_host_metrics(host['id'], host['host_name'], bool(host['is_active']))
-                    
+
                     db.commit()
                     print(f"Successfully refreshed metrics for {len(hosts)} existing hosts!")
                     return
-                
+
                 # If we don't have enough hosts, we'll add more to reach num_hosts
                 hosts_to_add = num_hosts - existing_count
                 print(f"Adding {hosts_to_add} new hosts to reach target of {num_hosts}")
             else:
-                # Clear existing hosts
+                # Clear existing hosts and unmonitored hosts
                 print("Deleting all existing hosts")
                 db.execute('DELETE FROM hosts')
+                db.execute('DELETE FROM unmonitored_hosts')
                 db.commit()
                 hosts_to_add = num_hosts
-            
+
             # Generate new hosts if needed
             if hosts_to_add > 0:
-                for i in range(hosts_to_add):
+                # Generate some active hosts and some unmonitored hosts
+                active_hosts = int(hosts_to_add * 0.8)  # 80% active
+                unmonitored_hosts = hosts_to_add - active_hosts
+
+                # Generate active hosts
+                for i in range(active_hosts):
                     # Generate random account ID (12 digits)
                     account_id = ''.join([str(random.randint(0, 9)) for _ in range(12)])
-
-                    # Generate random instance ID
                     instance_id = f'i-{random.randint(1000000000, 9999999999)}abcdef{random.randint(0, 9)}'
-
-                    # Generate random IP (for demonstration)
                     ip = f'10.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}'
-
-                    # Generate random name
                     name = f'Server-{random.randint(1, 100)}'
-
-                    # Randomly set active status
-                    is_active = random.choice([True, False])
-
-                    # Generate random timestamps
+                    is_active = True
                     created_at = datetime.utcnow() - timedelta(days=random.randint(1, 30))
-                    last_check = datetime.utcnow() - timedelta(minutes=random.randint(0, 60)) if is_active else None
+                    last_check = datetime.utcnow() - timedelta(minutes=random.randint(0, 60))
 
                     cursor = db.execute('''
                         INSERT INTO hosts (
@@ -93,34 +89,61 @@ def generate_hosts(refresh_existing=False, num_hosts=10):
                         instance_id,
                         ip,
                         name,
-                        1 if is_active else 0,
+                        1,
                         last_check,
                         created_at
                     ))
                     host_id = cursor.lastrowid
-                    
-                    # Initialize RRD database and add metrics
-                    update_host_metrics(host_id, name, is_active)
-                
+                    update_host_metrics(host_id, name, True)
+
+                # Generate unmonitored hosts
+                for i in range(unmonitored_hosts):
+                    account_id = ''.join([str(random.randint(0, 9)) for _ in range(12)])
+                    instance_id = f'i-{random.randint(1000000000, 9999999999)}abcdef{random.randint(0, 9)}'
+                    ip = f'10.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}'
+                    name = f'Unmonitored-{random.randint(1, 100)}'
+                    created_at = datetime.utcnow() - timedelta(days=random.randint(30, 60))
+                    last_check = datetime.utcnow() - timedelta(days=random.randint(1, 30))
+                    unmonitored_at = datetime.utcnow() - timedelta(days=random.randint(1, 7))
+
+                    db.execute('''
+                        INSERT INTO unmonitored_hosts (
+                            account_label, account_id, region,
+                            host_id, host_ip_address, host_name,
+                            is_active, last_check, created_at, unmonitored_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        random.choice(account_labels),
+                        account_id,
+                        random.choice(regions),
+                        instance_id,
+                        ip,
+                        name,
+                        0,
+                        last_check,
+                        created_at,
+                        unmonitored_at
+                    ))
+
                 db.commit()
-                print(f"Successfully generated {hosts_to_add} new hosts with metrics!")
-            
+                print(f"Successfully generated {active_hosts} active hosts and {unmonitored_hosts} unmonitored hosts with metrics!")
+
             # If we're refreshing, also update metrics for existing hosts
             if refresh_existing and existing_count > 0:
-                hosts = db.execute('SELECT id, host_name, is_active FROM hosts LIMIT ?', 
+                hosts = db.execute('SELECT id, host_name, is_active FROM hosts LIMIT ?',
                                   (existing_count,)).fetchall()
                 print(f"Refreshing metrics for {len(hosts)} existing hosts")
-                
+
                 for host in hosts:
                     update_host_metrics(host['id'], host['host_name'], bool(host['is_active']))
-                
+
                 db.commit()
                 print(f"Successfully refreshed metrics for {len(hosts)} existing hosts!")
 
 def update_host_metrics(host_id, host_name, is_active):
     """
     Update metrics for a host.
-    
+
     Args:
         host_id (int): Host ID
         host_name (str): Host name
@@ -141,7 +164,7 @@ def update_host_metrics(host_id, host_name, is_active):
 
         # Get the last update time from the RRD file
         last_update_info = get_last_update(rrd_file)
-        
+
         if last_update_info:
             # Use the last update timestamp as the base for new data points
             # Add 300 seconds (5 minutes) to avoid timestamp conflicts
@@ -159,7 +182,7 @@ def update_host_metrics(host_id, host_name, is_active):
         # Make sure we don't generate timestamps in the future
         current_time = int(time.time())
         end_timestamp = min(current_time - 300, base_timestamp + (287 * 300))  # Ensure we don't go into the future
-        
+
         # Generate up to 288 points (24 hours at 5-minute intervals) or fewer if we hit current time
         timestamps = []
         timestamp = base_timestamp
@@ -185,7 +208,7 @@ def update_host_metrics(host_id, host_name, is_active):
                 # Then update with the rest of the data points
                 for timestamp, uptime, latency in data_points[1:]:
                     rrdtool.update(rrd_file, f'{timestamp}:{uptime}:{latency}')
-                
+
                 print(f"Updated metrics for host {host_id} ({host_name}) with {len(data_points)} data points")
             else:
                 print(f"No new data points to add for host {host_id} ({host_name})")
@@ -197,5 +220,5 @@ if __name__ == '__main__':
     parser.add_argument('--refresh', action='store_true', help='Refresh existing hosts instead of replacing them')
     parser.add_argument('--num-hosts', type=int, default=10, help='Number of hosts to generate (default: 10)')
     args = parser.parse_args()
-    
+
     generate_hosts(refresh_existing=args.refresh, num_hosts=args.num_hosts)

@@ -1,3 +1,27 @@
+// this is a massive DRY violation, but it's a quick fix to get the unmonitored hosts table sort working
+// TODO: refactor to use the main.js tableColumnSort function and remove any colliding functions
+utils = {
+     // order can be ASC(ending) or DESC(ending)
+     "tableColumnSort": function(event) {
+        var self = this;
+        self.columnIndex = document.getElementById('sortBy').value;
+        self.order =  document.getElementById('orderBy').value;
+        self.tableId = document.getElementById('orderBy').getAttribute('data-table-id');
+        self.tbody = document.querySelector(`#${self.tableId} tbody`);
+        self.rows = Array.from(self.tbody.querySelectorAll('tr'));
+
+        // untested with numerical data, all table data for this project is strings
+        self.rows.sort((rowX, rowZ) => {
+            cellX = rowX.querySelector(`td:nth-child(${self.columnIndex})`).innerText.trim().toString();
+            cellZ = rowZ.querySelector(`td:nth-child(${self.columnIndex})`).innerText.trim().toString();
+
+            return (cellX > cellZ ? 1 : -1) * (self.order == 'ASC' ? 1 : -1);
+        });
+
+        self.rows.forEach((row) => self.tbody.appendChild(row));
+    }
+}
+
 // Function to fetch unmonitored hosts from the API
 async function fetchUnmonitoredHosts() {
     try {
@@ -145,7 +169,7 @@ async function populateUnmonitoredHostsTable() {
         const formattedDate = unmonitoredAt.toLocaleString();
         
         // Determine status text and class
-        const statusText = host.is_active ? 'Active' : 'Inactive';
+        const statusText = host.is_active ? 'UP' : 'DOWN';
         const statusClass = host.is_active ? 'bg-success' : 'bg-danger';
         
         row.innerHTML = `
@@ -305,4 +329,6 @@ document.addEventListener('DOMContentLoaded', () => {
         container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
         document.body.appendChild(container);
     }
+    
+    document.querySelectorAll('form select').forEach((ele) => { ele.addEventListener('change', utils.tableColumnSort); });
 }); 

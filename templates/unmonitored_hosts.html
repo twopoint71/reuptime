@@ -7,16 +7,42 @@
     <h1>Unmonitored Hosts</h1>
 </div>
 
+<form>
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="row float-end">
+                <label class="col-sm-auto col-form-label pe-1" for="sortBy">Sort By</label>
+                <div class="col-sm-auto ps-1">
+                    <select id="sortBy" class="form-select" data-table-id="unmonitoredHostsTable">
+                        <option value="1">Hostname</option>
+                        <option value="2">IP Address</option>
+                        <option value="3">Region</option>
+                        <option value="4" selected>Status</option>
+                        <option value="5">Unmonitored At</option>
+                    </select>
+                </div>
+                <label class="col-sm-auto col-form-label pe-1" for="orderBy">Order</label>
+                <div class="col-sm-auto ps-1">
+                    <select id="orderBy" class="form-select" data-table-id="unmonitoredHostsTable">
+                        <option value="ASC" selected>Ascending</option>
+                        <option value="DESC">Descending</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
 <div class="card">
     <div class="card-header">
         Unmonitored Hosts
     </div>
-    <div class="card-body">
+        <div class="card-body">
         <table class="table" id="unmonitoredHostsTable">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>IP</th>
+                    <th>Hostname</th>
+                    <th>IP Address</th>
                     <th>Region</th>
                     <th>Status</th>
                     <th>Unmonitored At</th>
