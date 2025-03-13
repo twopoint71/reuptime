@@ -20,9 +20,9 @@ def register_static_routes(app):
     def unmonitored_hosts():
 	    return render_template('unmonitored_hosts.html')
 
-    @app.route('/host_list')
-    def host_list():
-	    return render_template('host_list.html')
+    @app.route('/monitored_hosts')
+    def monitored_hosts():
+	    return render_template('monitored_hosts.html')
 
     @app.route('/monitor_log')
     def monitor_log():
