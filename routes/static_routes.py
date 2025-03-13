@@ -5,7 +5,7 @@ def register_static_routes(app):
 
     @app.route('/')
     def home():
-	    return render_template('home.html')
+	    return render_template('summary.html')
 
     @app.route('/favicon.ico')
     def favicon():
