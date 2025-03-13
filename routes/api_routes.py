@@ -436,9 +436,10 @@ def register_api_routes(app):
     def get_annual_uptime():
         """API endpoint to fetch the annual uptime percentage."""
         try:
+            # get timestamps with 20 second alignment
             end_time = datetime.now()
-            start_time = str(int((end_time - timedelta(days=365)).timestamp()))
-            end_time = str(int(end_time.timestamp()))
+            start_time = str(int((end_time - timedelta(days=365)).timestamp() / 20) * 20)
+            end_time = str(int(end_time.timestamp() / 20) * 20)
 
             # Get the aggregate RRD file path
             aggregate_rrd = get_aggregate_rrd_path(app.config)
@@ -449,7 +450,7 @@ def register_api_routes(app):
                     'annual_uptime': '100.00'  # Default value if no data
                 }), 404
 
-            rrd_data = rrdtool.fetch(aggregate_rrd, 'AVERAGE', '--start', start_time, '--end', end_time, '--align-start')
+            rrd_data = rrdtool.fetch(aggregate_rrd, 'AVERAGE', '--start', start_time, '--end', end_time)
             
             if not rrd_data or len(rrd_data) < 3:
                 return jsonify({
