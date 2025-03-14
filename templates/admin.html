@@ -24,7 +24,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-6 mb-4">
         <div class="card">
             <div class="card-header">
@@ -33,7 +33,7 @@
             <div class="card-body">
                 <p><strong>Database Path:</strong> <span id="dbPath">Loading...</span></p>
                 <p><strong>Hosts Count:</strong> <span id="hostsCount">Loading...</span></p>
-                <p><strong>Deleted Hosts Count:</strong> <span id="deletedHostsCount">Loading...</span></p>
+                <p><strong>Unmonitored Hosts Count:</strong> <span id="unmonitoredHostsCount">Loading...</span></p>
                 <p><strong>Server Time:</strong> <span id="serverTime">Loading...</span></p>
                 <p><strong>Server Uptime:</strong> <span id="serverUptime">Loading...</span></p>
                 <div class="mt-3">
@@ -51,7 +51,7 @@
             </div>
             <div class="card-body">
                 <p>Bi-weekly downtime allotment for reboots and other maintenance events. Downtime allotment is measured in missed checks. The current monitoring interval is 20 seconds.</p>
-                <p>Example: If desired downtime allotment is 10 minutes, then the downtime allotment is 900 seconds(10 minutes) divided by a 20 second interval which equals 300 missed checks.</p>
+                <p>Example: If desired downtime allotment is 10 minutes, then the downtime allotment is 600 seconds(10 minutes) divided by a 20 second interval which equals 30 missed checks.</p>
                 <form id="downtimeAllotmentForm">
                     <div class="mb-3">
                         <label for="downtimeAllotment" class="form-label">Downtime Allotment</label>
@@ -84,12 +84,12 @@
                 </div>
             </div>
         `;
-        
+
         document.getElementById('toastContainer').insertAdjacentHTML('beforeend', toastHTML);
         const toastElement = document.getElementById(toastId);
         const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
         toast.show();
-        
+
         // Remove toast from DOM after it's hidden
         toastElement.addEventListener('hidden.bs.toast', () => {
             toastElement.remove();
@@ -109,7 +109,7 @@
 
                     // Remove all status classes
                     statusCard.classList.remove('status-running', 'status-stopped', 'status-error', 'status-unknown');
-                    
+
                     // Add appropriate status class
                     if (data.status === 'running') {
                         statusCard.classList.add('status-running');
@@ -188,7 +188,7 @@
                 if (data) {
                     document.getElementById('dbPath').textContent = data.db_path || 'Unknown';
                     document.getElementById('hostsCount').textContent = data.hosts_count || '0';
-                    document.getElementById('deletedHostsCount').textContent = data.deleted_hosts_count || '0';
+                    document.getElementById('unmonitoredHostsCount').textContent = data.unmonitored_hosts_count || '0';
                     document.getElementById('serverUptime').textContent = data.server_uptime || 'Unknown';
                     document.getElementById('serverTime').textContent = data.server_time || 'Unknown';
                 }
@@ -199,19 +199,72 @@
             });
     }
 
-    // Set up event listeners
-    document.addEventListener('DOMContentLoaded', function() {
+    function saveDowntimeAllotment() {
+        const allotment = document.getElementById('downtimeAllotment').value;
+
+        fetch('/api/downtime_allotment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                downtime_allotment: parseInt(allotment)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showToast('Error saving downtime allotment: ' + data.error, 'danger');
+            } else {
+                showToast('Downtime allotment saved successfully', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error saving downtime allotment: ' + error.message, 'danger');
+        });
+    }
+
+    function loadDowntimeAllotment() {
+        var allotment = document.getElementById('downtimeAllotment')
+
+        fetch('/api/downtime_allotment', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showToast('Error retrieving downtime allotment: ' + data.error, 'danger');
+            } else {
+                allotment.value = data.downtime_allotment;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error saving downtime allotment: ' + error.message, 'danger');
+        });
+    }
+
+     // Set up event listeners
+     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('startDaemonBtn').addEventListener('click', startDaemon);
         document.getElementById('stopDaemonBtn').addEventListener('click', stopDaemon);
         document.getElementById('refreshStatusBtn').addEventListener('click', refreshDaemonStatus);
         document.getElementById('refreshSystemInfoBtn').addEventListener('click', loadSystemInfo);
-        
+
         // Initial load
         refreshDaemonStatus();
         loadSystemInfo();
-        
+        loadDowntimeAllotment();
+
         // Set up interval for status updates
         setInterval(refreshDaemonStatus, 30000); // Update every 30 seconds
+
+        // Add event listener for downtime allotment save button
+        document.getElementById('saveDowntimeAllotmentBtn').addEventListener('click', saveDowntimeAllotment);
     });
 </script>
-{% endblock %} 
+{% endblock %}

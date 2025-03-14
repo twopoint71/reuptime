@@ -60,7 +60,9 @@ def init_db(config):
                 host_name TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_check TIMESTAMP,
-                is_active INTEGER DEFAULT 1
+                is_active INTEGER DEFAULT 1,
+                downtime_allotment INTEGER DEFAULT 0,
+                last_allotment_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
@@ -80,6 +82,26 @@ def init_db(config):
                 unmonitored_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        # Create settings table
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value INTEGER,
+                description TEXT
+            )
+        ''')
+        
+        # Insert default downtime allotment setting if it doesn't exist
+        db.execute('''
+            INSERT OR IGNORE INTO settings (key, value, description)
+            VALUES (
+                'default_downtime_allotment',
+                0,
+                'Default bi-weekly downtime allotment for hosts'
+            )
+        ''')
+        
         db.commit() 
 
 # Did not want to hardcode the database path, but the alternative is rather messy

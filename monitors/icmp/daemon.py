@@ -62,14 +62,11 @@ def get_all_hosts():
 def check_host(host):
     """
     Check a host's status using ICMP ping and update metrics.
-    
-    Args:
-        host: A database row containing host information
-        
-    Returns:
-        tuple: (success, latency) where success is a boolean and latency is in ms
     """
     global host_status_totals
+    success = False
+    latency = 1000  # Default to max latency for failures
+
     try:
         # Perform ICMP check with shorter timeout (1 second)
         result = subprocess.run(
@@ -77,31 +74,57 @@ def check_host(host):
             capture_output=True, text=True, timeout=2
         )
         success = result.returncode == 0
-        
-        # Update host status in database
-        with get_db(app_config) as db:
-            db.execute('''
-                UPDATE hosts 
-                SET last_check = CURRENT_TIMESTAMP, is_active = ?
-                WHERE id = ?
-            ''', (1 if success else 0, host['id']))
-            db.commit()
-        
-        # Increment appropriate counter based on current check result
-        if success:
-            host_status_totals['hosts_up'] += 1
-        else:
-            host_status_totals['hosts_down'] += 1
-        
-        # Extract latency from ping output
-        latency = 0
+
+        # Extract latency from ping output if successful
         if success and 'time=' in result.stdout:
             latency_str = result.stdout.split('time=')[-1].split()[0]
             try:
                 latency = float(latency_str)
             except ValueError:
                 logger.warning(f"Could not parse latency from ping output: {result.stdout}")
-        
+
+    except (subprocess.TimeoutExpired, Exception) as e:
+        logger.warning(f"Error checking host {host['host_name']} (ID: {host['id']}): {str(e)}")
+        success = False
+
+    # Handle status updates and downtime allotment - moved outside try/except
+    try:
+        # Check if we should use downtime allotment
+        if not success and host['downtime_allotment'] > 0:
+            # Get current allotment before updating
+            current_allotment = host['downtime_allotment']
+            new_allotment = current_allotment - 1
+
+            # Use a downtime allotment point and treat as success
+            with get_db(app_config) as db:
+                db.execute('''
+                    UPDATE hosts
+                    SET downtime_allotment = ?,
+                        last_check = CURRENT_TIMESTAMP,
+                        is_active = 1
+                    WHERE id = ?
+                ''', (new_allotment, host['id']))
+                db.commit()
+
+            success = True  # Treat as success for RRD and status updates
+            logger.info(f"Used downtime allotment point for host {host['host_name']} ({new_allotment} remaining)")
+        else:
+            # Normal status update
+            with get_db(app_config) as db:
+                db.execute('''
+                    UPDATE hosts
+                    SET last_check = CURRENT_TIMESTAMP,
+                        is_active = ?
+                    WHERE id = ?
+                ''', (1 if success else 0, host['id']))
+                db.commit()
+
+        # Update status counters
+        if success:
+            host_status_totals['hosts_up'] += 1
+        else:
+            host_status_totals['hosts_down'] += 1
+
         # Update RRD database
         rrd_file = get_rrd_path(host['id'], app_config)
         if os.path.exists(rrd_file):
@@ -109,42 +132,25 @@ def check_host(host):
             logger.debug(f"Updated RRD for host {host['host_name']} (ID: {host['id']}): success={success}, latency={latency}ms")
         else:
             logger.warning(f"RRD file not found for host {host['host_name']} (ID: {host['id']})")
-            # Try to create the RRD file
             try:
                 from rrd_utils import init_rrd
                 logger.info(f"Attempting to create RRD file for host {host['host_name']} (ID: {host['id']})")
                 init_rrd(host['id'], app_config)
-                logger.info(f"Successfully created RRD file for host {host['host_name']} (ID: {host['id']})")
-                # Update the newly created RRD file
                 update_rrd(rrd_file, int(time.time()), 100 if success else 0, latency)
             except Exception as e:
                 logger.error(f"Failed to create RRD file for host {host['host_name']} (ID: {host['id']}): {str(e)}")
-        
-        # Log the result
+
+        # Log the final result
         if success:
             logger.info(f"Host {host['host_name']} ({host['host_ip_address']}) is UP with latency {latency}ms")
         else:
             logger.warning(f"Host {host['host_name']} ({host['host_ip_address']}) is DOWN")
-        
+
         return success, latency
-    except (subprocess.TimeoutExpired, Exception) as e:
-        logger.warning(f"Error checking host {host['host_name']} (ID: {host['id']}): {str(e)}")
-        with get_db(app_config) as db:
-            db.execute('''
-                UPDATE hosts 
-                SET last_check = CURRENT_TIMESTAMP, is_active = 0
-                WHERE id = ?
-            ''', (host['id'],))
-            db.commit()
-        
-        # Update RRD with 0 uptime and max latency
-        rrd_file = get_rrd_path(host['id'], app_config)
-        if os.path.exists(rrd_file):
-            update_rrd(rrd_file, int(time.time()), 0, 1000)
-        
-        # Update status counts for failures
+
+    except Exception as e:
+        logger.error(f"Error updating host status for {host['host_name']} (ID: {host['id']}): {str(e)}")
         host_status_totals['hosts_down'] += 1
-        
         return False, 1000
 
 def check_host_thread(host):
@@ -155,31 +161,35 @@ def check_host_thread(host):
 def run_checks():
     """Run checks on all hosts in parallel."""
     global host_status_totals
+
+    # Check and reset allotments before running checks
+    check_and_reset_allotments()
+
     hosts = get_all_hosts()
     if not hosts:
         logger.warning("No hosts found in database")
         return
-    
+
     # Reset totals at the start of each check cycle
     host_status_totals['hosts_up'] = 0
     host_status_totals['hosts_down'] = 0
     host_status_totals['total_hosts'] = len(hosts)
-    
+
     logger.info(f"Checking {len(hosts)} hosts...")
     threads = []
-    
+
     for host in hosts:
         thread = threading.Thread(target=check_host_thread, args=(host,))
         thread.daemon = True
         thread.start()
         threads.append(thread)
-    
+
     # Wait for all threads to complete
     for thread in threads:
         thread.join()
-    
+
     logger.info(f"Completed checking {len(hosts)} hosts")
-    
+
     # Update aggregate RRD with the current totals
     update_aggregate_stats()
 
@@ -188,20 +198,20 @@ def update_aggregate_stats():
     try:
         current_time = int(time.time())
         aligned_timestamp = math.floor(current_time / 20) * 20  # Align to 20-second interval
-        
+
         uptime_percent = 0
         if host_status_totals['total_hosts'] > 0:
             uptime_percent = round((host_status_totals['hosts_up'] / host_status_totals['total_hosts']) * 100, 2)
-        
+
         logger.info(f"Aggregate uptime: {uptime_percent}% (Up: {host_status_totals['hosts_up']}, "
                    f"Down: {host_status_totals['hosts_down']}, Total: {host_status_totals['total_hosts']})")
-        
+
         aggregate_rrd = get_aggregate_rrd_path(app_config)
-        
+
         if not os.path.exists(aggregate_rrd):
             logger.info(f"Creating aggregate uptime RRD file: {aggregate_rrd}")
             aggregate_rrd = init_aggregate_rrd(app_config)
-        
+
         success = update_aggregate_rrd(
             aggregate_rrd,
             aligned_timestamp,
@@ -209,10 +219,10 @@ def update_aggregate_stats():
             host_status_totals['hosts_down'],
             uptime_percent
         )
-        
+
         if not success:
             logger.error("Failed to update aggregate uptime RRD")
-            
+
     except Exception as e:
         logger.error(f"Error updating aggregate stats: {str(e)}", exc_info=True)
 
@@ -247,18 +257,60 @@ def cleanup():
     except Exception as e:
         logger.error(f"Error during cleanup: {str(e)}")
 
+def check_and_reset_allotments():
+    """
+    Check and reset downtime allotments based on calendar weeks.
+    Resets occur on even-numbered weeks of the year.
+    """
+    try:
+        with get_db(app_config) as db:
+            # Get current week number (1-53)
+            db.execute('''
+                UPDATE hosts
+                SET downtime_allotment = (
+                    SELECT value
+                    FROM settings
+                    WHERE key = 'default_downtime_allotment'
+                    LIMIT 1
+                ),
+                last_allotment_reset = CURRENT_TIMESTAMP
+                WHERE (
+                    -- Only reset on even-numbered weeks
+                    CAST(strftime('%W', CURRENT_TIMESTAMP) AS INTEGER) % 2 = 0
+                    -- Only reset if we haven't already reset this week
+                    AND strftime('%W', last_allotment_reset) != strftime('%W', CURRENT_TIMESTAMP)
+                )
+            ''')
+
+            # Log which hosts were reset
+            reset_hosts = db.execute('''
+                SELECT host_name, downtime_allotment
+                FROM hosts
+                WHERE strftime('%W', last_allotment_reset) = strftime('%W', CURRENT_TIMESTAMP)
+                AND date(last_allotment_reset) = date(CURRENT_TIMESTAMP)
+            ''').fetchall()
+
+            if reset_hosts:
+                logger.info(f"Week {datetime.now().strftime('%W')}: Reset downtime allotment for {len(reset_hosts)} hosts")
+                for host in reset_hosts:
+                    logger.debug(f"Reset downtime allotment for host {host['host_name']}")
+
+            db.commit()
+    except Exception as e:
+        logger.error(f"Error checking/resetting downtime allotments: {str(e)}")
+
 def main():
     """Main function to run the daemon."""
     parser = argparse.ArgumentParser(description='ICMP Monitor Daemon')
     parser.add_argument('--interval', type=int, default=20, help='Interval between checks in seconds (default: 20)')
     parser.add_argument('--debug', action='store_true', help='Enable debug logging')
-    parser.add_argument('--action', choices=['start', 'stop', 'status'], default='start', 
+    parser.add_argument('--action', choices=['start', 'stop', 'status'], default='start',
                         help='Action to perform (start, stop, status)')
     args = parser.parse_args()
-    
+
     if args.debug:
         logger.setLevel(logging.DEBUG)
-    
+
     # Handle different actions
     if args.action == 'status':
         if os.path.exists(status_file):
@@ -278,7 +330,7 @@ def main():
         else:
             print("Daemon is not running")
             return 1
-    
+
     elif args.action == 'stop':
         if os.path.exists(pid_file):
             try:
@@ -299,7 +351,7 @@ def main():
         else:
             print("Daemon is not running")
             return 0
-    
+
     # Start action
     # Check if already running
     if os.path.exists(pid_file):
@@ -315,7 +367,7 @@ def main():
             os.remove(pid_file)
         except Exception as e:
             print(f"Error checking daemon status: {str(e)}")
-    
+
     # Write PID file
     try:
         with open(pid_file, 'w') as f:
@@ -323,50 +375,50 @@ def main():
     except Exception as e:
         print(f"Error writing PID file: {str(e)}")
         return 1
-    
+
     # Register cleanup handler
     atexit.register(cleanup)
-    
+
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
     logger.info(f"Starting ICMP monitor daemon with {args.interval} second interval")
     logger.info(f"Using database: {db_path}")
-    
+
     try:
         # Initialize the database using the imported function
         init_db(app_config)
-        
+
         # Update status
         update_status('running', f'Daemon started with {args.interval} second interval')
-        
+
         # Initial check to make sure everything is working
         run_checks()
-        
+
         # Main loop
         while running:
             start_time = time.time()
             run_checks()
-            
+
             # Calculate sleep time to maintain consistent interval
             elapsed = time.time() - start_time
             sleep_time = max(0.1, args.interval - elapsed)
-            
+
             if sleep_time < 1:
                 logger.warning(f"Check took longer than interval: {elapsed:.2f}s > {args.interval}s")
-            
+
             # Sleep until next check
             time.sleep(sleep_time)
-    
+
     except Exception as e:
         logger.error(f"Unhandled exception: {str(e)}")
         update_status('error', str(e))
         return 1
-    
+
     logger.info("ICMP monitor daemon stopped")
     update_status('stopped', 'Daemon stopped normally')
     return 0
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

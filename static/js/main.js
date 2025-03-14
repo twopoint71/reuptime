@@ -239,7 +239,7 @@ function setupGraphModals() {
 function initializeHostsTable() {
     fetch('/api/hosts')
         .then(response => response.json())
-        .then(hosts => {
+        .then(data => {
             const tableBody = document.querySelector('#hostsTable tbody');
             if (!tableBody) return;
 
@@ -257,7 +257,7 @@ function initializeHostsTable() {
             }
 
             // Add each host to the table
-            hosts.forEach(host => {
+            data.hosts_list.forEach(host => {
                 // Create table row
                 const row = document.createElement('tr');
 
@@ -319,6 +319,9 @@ function initializeHostsTable() {
 
                                     <dt class="col-sm-4">Instance Name</dt>
                                     <dd class="col-sm-8">${host.host_name}</dd>
+
+                                    <dt class="col-sm-4">Downtime Allotment</dt>
+                                    <dd class="col-sm-8">${host.downtime_allotment} / ${data.downtime_allotment}</dd>
 
                                     <dt class="col-sm-4">Status</dt>
                                     <dd class="col-sm-8">
