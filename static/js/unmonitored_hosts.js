@@ -1,27 +1,3 @@
-// this is a massive DRY violation, but it's a quick fix to get the unmonitored hosts table sort working
-// TODO: refactor to use the main.js tableColumnSort function and remove any colliding functions
-utils = {
-     // order can be ASC(ending) or DESC(ending)
-     "tableColumnSort": function(event) {
-        var self = this;
-        self.columnIndex = document.getElementById('sortBy').value;
-        self.order =  document.getElementById('orderBy').value;
-        self.tableId = document.getElementById('orderBy').getAttribute('data-table-id');
-        self.tbody = document.querySelector(`#${self.tableId} tbody`);
-        self.rows = Array.from(self.tbody.querySelectorAll('tr'));
-
-        // untested with numerical data, all table data for this project is strings
-        self.rows.sort((rowX, rowZ) => {
-            cellX = rowX.querySelector(`td:nth-child(${self.columnIndex})`).innerText.trim().toString();
-            cellZ = rowZ.querySelector(`td:nth-child(${self.columnIndex})`).innerText.trim().toString();
-
-            return (cellX > cellZ ? 1 : -1) * (self.order == 'ASC' ? 1 : -1);
-        });
-
-        self.rows.forEach((row) => self.tbody.appendChild(row));
-    }
-}
-
 // Function to fetch unmonitored hosts from the API
 async function fetchUnmonitoredHosts() {
     try {
@@ -47,7 +23,7 @@ function showToast(message, type = 'success') {
         container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
         document.body.appendChild(container);
     }
-    
+
     const toastId = 'toast-' + Date.now();
     const toastHTML = `
         <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
@@ -60,12 +36,12 @@ function showToast(message, type = 'success') {
             </div>
         </div>
     `;
-    
+
     document.getElementById('toastContainer').insertAdjacentHTML('beforeend', toastHTML);
     const toastElement = document.getElementById(toastId);
     const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
     toast.show();
-    
+
     // Remove toast from DOM after it's hidden
     toastElement.addEventListener('hidden.bs.toast', () => {
         toastElement.remove();
@@ -88,19 +64,19 @@ async function restoreHost(params) {
             },
             body: JSON.stringify({ host_id: params.hostId }),
         });
-        
+
         const data = await response.json();
-        
+
         if (!response.ok) {
             throw new Error(data.error || 'Failed to restore host');
         }
-        
+
         // Refresh the unmonitored hosts table
         populateUnmonitoredHostsTable();
-        
+
         // Show success message with toast
         showToast('Host restored successfully!', 'success');
-        
+
         // Redirect to main page after a short delay
         setTimeout(() => {
             window.location.href = '/';
@@ -127,16 +103,16 @@ async function permanentlyDeleteHost(params) {
             },
             body: JSON.stringify({ host_id: params.hostId }),
         });
-        
+
         const data = await response.json();
-        
+
         if (!response.ok) {
             throw new Error(data.error || 'Failed to permanently delete host');
         }
-        
+
         // Refresh the deleted hosts table
         populateUnmonitoredHostsTable();
-        
+
         // Show success message with toast
         showToast('Host permanently deleted!', 'success');
     } catch (error) {
@@ -149,29 +125,29 @@ async function permanentlyDeleteHost(params) {
 async function populateUnmonitoredHostsTable() {
     const unmonitoredHosts = await fetchUnmonitoredHosts();
     const tableBody = document.querySelector('#unmonitoredHostsTable tbody');
-    
+
     // Clear existing rows
     tableBody.innerHTML = '';
-    
+
     if (unmonitoredHosts.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = '<td colspan="6" class="text-center">No unmonitored hosts found</td>';
         tableBody.appendChild(row);
         return;
     }
-    
+
     // Add rows for each unmonitored host
     unmonitoredHosts.forEach(host => {
         const row = document.createElement('tr');
-        
+
         // Format the unmonitored_at date
         const unmonitoredAt = new Date(host.unmonitored_at);
         const formattedDate = unmonitoredAt.toLocaleString();
-        
+
         // Determine status text and class
         const statusText = host.is_active ? 'UP' : 'DOWN';
         const statusClass = host.is_active ? 'bg-success' : 'bg-danger';
-        
+
         row.innerHTML = `
             <td>${host.host_name || 'Unknown'}</td>
             <td>${host.host_ip_address || 'Unknown'}</td>
@@ -183,15 +159,15 @@ async function populateUnmonitoredHostsTable() {
                 <button class="btn btn-sm btn-danger delete-btn" data-host-id="${host.id}">Delete Permanently</button>
             </td>
         `;
-        
+
         tableBody.appendChild(row);
     });
-    
+
     // Add event listeners to the restore and delete buttons
     document.querySelectorAll('.restore-btn').forEach(button => {
         button.addEventListener('mousedown', initiateRestoreHost);
     });
-    
+
     document.querySelectorAll('.delete-btn').forEach(button => {
         button.addEventListener('mousedown', initiateDeleteHost);
     });
@@ -207,10 +183,10 @@ function toggleDarkMode() {
     const text = document.querySelector('#darkModeToggle span');
     const navbar = document.querySelector('.navbar');
     const darkModeToggle = document.getElementById('darkModeToggle');
-    
+
     // Toggle dark mode class on body and html
     body.classList.toggle('dark-mode');
-    
+
     // Update icon and localStorage
     if (body.classList.contains('dark-mode')) {
         // Switching to dark mode
@@ -218,13 +194,13 @@ function toggleDarkMode() {
         icon.classList.add('fa-sun');
         if (text) text.textContent = 'Toggle Light Mode';
         localStorage.setItem('darkMode', 'enabled');
-        
+
         // Update navbar classes for dark mode
         if (navbar) {
             navbar.classList.remove('navbar-light', 'bg-light');
             navbar.classList.add('navbar-dark', 'bg-dark');
         }
-        
+
         // Update dark mode toggle button
         if (darkModeToggle) {
             darkModeToggle.classList.remove('btn-outline-secondary');
@@ -236,19 +212,19 @@ function toggleDarkMode() {
         icon.classList.add('fa-moon');
         if (text) text.textContent = 'Toggle Dark Mode';
         localStorage.setItem('darkMode', 'disabled');
-        
+
         // Update navbar classes for light mode
         if (navbar) {
             navbar.classList.remove('navbar-dark', 'bg-dark');
             navbar.classList.add('navbar-light', 'bg-light');
         }
-        
+
         // Update dark mode toggle button
         if (darkModeToggle) {
             darkModeToggle.classList.remove('btn-outline-light');
             darkModeToggle.classList.add('btn-outline-secondary');
         }
-        
+
         // Ensure dark mode classes are removed
         html.classList.remove('dark-mode-preload');
     }
@@ -261,13 +237,13 @@ function initializeDarkMode() {
     const icon = document.querySelector('#darkModeToggle i');
     const text = document.querySelector('#darkModeToggle span');
     const navbar = document.querySelector('.navbar');
-    
+
     // Remove preload class to allow transitions
     setTimeout(() => {
         document.documentElement.classList.remove('dark-mode-preload');
         document.body.classList.remove('dark-mode-preload');
     }, 100);
-    
+
     if (darkMode === 'enabled') {
         // Apply dark mode
         document.body.classList.add('dark-mode');
@@ -276,13 +252,13 @@ function initializeDarkMode() {
             icon.classList.add('fa-sun');
         }
         if (text) text.textContent = 'Toggle Light Mode';
-        
+
         // Update navbar classes for dark mode
         if (navbar) {
             navbar.classList.remove('navbar-light', 'bg-light');
             navbar.classList.add('navbar-dark', 'bg-dark');
         }
-        
+
         // Update dark mode toggle button
         if (darkModeToggle) {
             darkModeToggle.classList.remove('btn-outline-secondary');
@@ -296,20 +272,20 @@ function initializeDarkMode() {
             icon.classList.add('fa-moon');
         }
         if (text) text.textContent = 'Toggle Dark Mode';
-        
+
         // Update navbar classes for light mode
         if (navbar) {
             navbar.classList.remove('navbar-dark', 'bg-dark');
             navbar.classList.add('navbar-light', 'bg-light');
         }
-        
+
         // Update dark mode toggle button
         if (darkModeToggle) {
             darkModeToggle.classList.remove('btn-outline-light');
             darkModeToggle.classList.add('btn-outline-secondary');
         }
     }
-    
+
     // Add event listener to dark mode toggle button
     if (darkModeToggle) {
         // Remove any existing event listeners to prevent duplicates
@@ -323,7 +299,7 @@ function initializeDarkMode() {
 document.addEventListener('DOMContentLoaded', () => {
     populateUnmonitoredHostsTable();
     initializeDarkMode();
-    
+
     // Create toast container if it doesn't exist
     if (!document.getElementById('toastContainer')) {
         const container = document.createElement('div');
@@ -333,4 +309,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.querySelectorAll('form select').forEach((ele) => { ele.addEventListener('change', utils.tableColumnSort); });
-}); 
+});
