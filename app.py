@@ -25,7 +25,7 @@ app.config.from_mapping(
 app.config.from_pyfile('config.py', silent=True)
 
 app.config['MONITOR_PATH'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'monitors')
-app.config['RRD_DIR'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rrd')
+app.config['RRD_DIR'] = os.path.join(app.instance_path, 'rrd')
 app.config['MONITOR_LOG_PATH'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'monitors', 'icmp', 'icmp_monitor.log')
 
 # Make get_db available as an app attribute for testing

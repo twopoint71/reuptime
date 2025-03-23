@@ -131,7 +131,7 @@ def register_host_routes(app):
                     f.write(f"[ERROR] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Failed to create RRD file for host ID {host_id}: {str(e)}\n")
 
             # Redirect to the main page with a success parameter
-            return redirect(url_for('host_list', host_added=request.form['host_name']))
+            return redirect(url_for('monitored_hosts', host_added=request.form['host_name']))
 
         except Exception as e:
             print(f"Error adding host: {str(e)}")  # Add logging for debugging
@@ -141,7 +141,9 @@ def register_host_routes(app):
     def check_host_route(host_id):
         """Route to check a specific host's status."""
         with get_db(app.config) as db:
-            host = db.execute('SELECT * FROM hosts WHERE id = ?', (host_id,)).fetchone()
+            hosts = db.execute('SELECT * FROM hosts WHERE id = ?', (host_id,)).fetchall()
+            for host in hosts:
+                success = check_host(host, app.config)
             if not host:
                 return jsonify({'success': False, 'error': 'Host not found'}), 404
 

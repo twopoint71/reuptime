@@ -63,6 +63,7 @@ def check_host(host):
     """
     Check a host's status using ICMP ping and update metrics.
     """
+
     global host_status_totals
     success = False
     latency = 1000  # Default to max latency for failures
@@ -74,7 +75,6 @@ def check_host(host):
             capture_output=True, text=True, timeout=2
         )
         success = result.returncode == 0
-
         # Extract latency from ping output if successful
         if success and 'time=' in result.stdout:
             latency_str = result.stdout.split('time=')[-1].split()[0]
@@ -85,7 +85,6 @@ def check_host(host):
 
     except (subprocess.TimeoutExpired, Exception) as e:
         logger.warning(f"Error checking host {host['host_name']} (ID: {host['id']}): {str(e)}")
-        success = False
 
     # Handle status updates and downtime allotment - moved outside try/except
     try:
