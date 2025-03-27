@@ -188,9 +188,9 @@ show_help() {
     echo "            Press Ctrl+C to exit"
     echo
     echo "Examples:"
-    echo "  control.sh --action start"
-    echo "  control.sh --action stop"
-    echo "  control.sh --action status"
+    echo "  control.sh start"
+    echo "  control.sh stop"
+    echo "  control.sh status"
     echo
     echo "Files:"
     echo "  Daemon Script: $DAEMON_PATH"
