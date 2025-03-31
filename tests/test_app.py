@@ -48,19 +48,22 @@ def test_import_hosts_success(client, sample_csv, app_with_db):
 
 def test_get_metrics_redirect(client):
     """Test that the /metrics endpoint redirects to /api/metrics."""
-    response = client.get('/metrics/999', follow_redirects=False)
+    test_uuid = "123e4567-e89b-12d3-a456-426614174000"
+    response = client.get(f'/metrics/{test_uuid}', follow_redirects=False)
     assert response.status_code == 301
-    assert response.location == '/api/metrics/999'
+    assert response.location == f'/api/metrics/{test_uuid}'
 
 def test_get_metrics_redirect_with_query_params(client):
     """Test that the /metrics endpoint redirects to /api/metrics with query parameters."""
-    response = client.get('/metrics/999?range=24h', follow_redirects=False)
+    test_uuid = "123e4567-e89b-12d3-a456-426614174000"
+    response = client.get(f'/metrics/{test_uuid}?range=24h', follow_redirects=False)
     assert response.status_code == 301
-    assert response.location == '/api/metrics/999?range=24h'
+    assert response.location == f'/api/metrics/{test_uuid}?range=24h'
 
 def test_get_metrics_nonexistent_host(client):
     """Test getting metrics for a nonexistent host."""
-    response = client.get('/api/metrics/999')
+    test_uuid = "123e4567-e89b-12d3-a456-426614174000"
+    response = client.get(f'/api/metrics/{test_uuid}')
 
     # The application creates a new RRD file for nonexistent hosts
     # and returns a 200 status code with empty data
@@ -105,7 +108,7 @@ def test_get_metrics_success(client, sample_host, monkeypatch):
     monkeypatch.setattr('routes.api_routes.format_rrd_data_for_chart', mock_format_rrd_data)
 
     # Send a request to get metrics for the host
-    response = client.get(f'/api/metrics/{sample_host["id"]}')
+    response = client.get(f'/api/metrics/{sample_host["uuid"]}')
 
     # Check that the response is successful
     assert response.status_code == 200

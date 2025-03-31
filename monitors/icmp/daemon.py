@@ -59,102 +59,80 @@ def get_all_hosts():
     with get_db(app_config) as db:
         return db.execute('SELECT * FROM hosts').fetchall()
 
-def check_host(host):
-    """
-    Check a host's status using ICMP ping and update metrics.
-    """
-
-    global host_status_totals
-    success = False
-    latency = 1000  # Default to max latency for failures
-
+def check_host(host, app_config):
+    """Check a host's status and update metrics."""
     try:
-        # Perform ICMP check with shorter timeout (1 second)
-        result = subprocess.run(
-            ['ping', '-c', '1', '-W', '2', host['host_ip_address']],
-            capture_output=True, text=True, timeout=2
-        )
+        # Perform ICMP check
+        result = subprocess.run(['ping', '-c', '1', '-w', '2', host['host_ip_address']], capture_output=True, text=True)
         success = result.returncode == 0
-        # Extract latency from ping output if successful
-        if success and 'time=' in result.stdout:
-            latency_str = result.stdout.split('time=')[-1].split()[0]
-            try:
-                latency = float(latency_str)
-            except ValueError:
-                logger.warning(f"Could not parse latency from ping output: {result.stdout}")
 
-    except (subprocess.TimeoutExpired, Exception) as e:
-        logger.warning(f"Error checking host {host['host_name']} (ID: {host['id']}): {str(e)}")
+        # Handle status updates and downtime allotment - moved outside try/except
+        try:
+            # Check if we should use downtime allotment
+            if not success and host['downtime_allotment'] > 0:
+                # Get current allotment before updating
+                current_allotment = host['downtime_allotment']
+                new_allotment = current_allotment - 1
 
-    # Handle status updates and downtime allotment - moved outside try/except
-    try:
-        # Check if we should use downtime allotment
-        if not success and host['downtime_allotment'] > 0:
-            # Get current allotment before updating
-            current_allotment = host['downtime_allotment']
-            new_allotment = current_allotment - 1
+                # Use a downtime allotment point and treat as success
+                with get_db(app_config) as db:
+                    db.execute('''
+                        UPDATE hosts
+                        SET downtime_allotment = ?,
+                            last_check = CURRENT_TIMESTAMP,
+                            is_active = 1
+                        WHERE uuid = ?
+                    ''', (new_allotment, host['uuid']))
+                    db.commit()
 
-            # Use a downtime allotment point and treat as success
-            with get_db(app_config) as db:
-                db.execute('''
-                    UPDATE hosts
-                    SET downtime_allotment = ?,
-                        last_check = CURRENT_TIMESTAMP,
-                        is_active = 1
-                    WHERE id = ?
-                ''', (new_allotment, host['id']))
-                db.commit()
+                success = True  # Treat as success for RRD and status updates
+                logger.info(f"Used downtime allotment point for host {host['host_name']} ({new_allotment} remaining)")
+            else:
+                # Normal status update
+                with get_db(app_config) as db:
+                    db.execute('''
+                        UPDATE hosts
+                        SET last_check = CURRENT_TIMESTAMP,
+                            is_active = ?
+                        WHERE uuid = ?
+                    ''', (1 if success else 0, host['uuid']))
+                    db.commit()
 
-            success = True  # Treat as success for RRD and status updates
-            logger.info(f"Used downtime allotment point for host {host['host_name']} ({new_allotment} remaining)")
-        else:
-            # Normal status update
-            with get_db(app_config) as db:
-                db.execute('''
-                    UPDATE hosts
-                    SET last_check = CURRENT_TIMESTAMP,
-                        is_active = ?
-                    WHERE id = ?
-                ''', (1 if success else 0, host['id']))
-                db.commit()
+            # Update status counters
+            if success:
+                host_status_totals['hosts_up'] += 1
+            else:
+                host_status_totals['hosts_down'] += 1
 
-        # Update status counters
-        if success:
-            host_status_totals['hosts_up'] += 1
-        else:
-            host_status_totals['hosts_down'] += 1
+            # Update RRD database
+            rrd_file = get_rrd_path(host['uuid'], app_config)
+            if os.path.exists(rrd_file):
+                try:
+                    # Extract latency from ping output
+                    latency = 0
+                    if success and 'time=' in result.stdout:
+                        latency_str = result.stdout.split('time=')[-1].split()[0]
+                        latency = float(latency_str)
 
-        # Update RRD database
-        rrd_file = get_rrd_path(host['id'], app_config)
-        if os.path.exists(rrd_file):
-            update_rrd(rrd_file, int(time.time()), 100 if success else 0, latency)
-            logger.debug(f"Updated RRD for host {host['host_name']} (ID: {host['id']}): success={success}, latency={latency}ms")
-        else:
-            logger.warning(f"RRD file not found for host {host['host_name']} (ID: {host['id']})")
-            try:
-                from rrd_utils import init_rrd
-                logger.info(f"Attempting to create RRD file for host {host['host_name']} (ID: {host['id']})")
-                init_rrd(host['id'], app_config)
-                update_rrd(rrd_file, int(time.time()), 100 if success else 0, latency)
-            except Exception as e:
-                logger.error(f"Failed to create RRD file for host {host['host_name']} (ID: {host['id']}): {str(e)}")
+                    update_rrd(rrd_file, int(time.time()), 100 if success else 0, latency)
+                except Exception as e:
+                    logger.error(f"Error updating RRD file: {str(e)}")
+            else:
+                logger.warning(f"RRD file not found: {rrd_file}")
 
-        # Log the final result
-        if success:
-            logger.info(f"Host {host['host_name']} ({host['host_ip_address']}) is UP with latency {latency}ms")
-        else:
-            logger.warning(f"Host {host['host_name']} ({host['host_ip_address']}) is DOWN")
+        except Exception as e:
+            logger.error(f"Error updating host status: {str(e)}")
+            # Don't raise here, we want to continue with other hosts
 
-        return success, latency
+        return success
 
     except Exception as e:
-        logger.error(f"Error updating host status for {host['host_name']} (ID: {host['id']}): {str(e)}")
-        host_status_totals['hosts_down'] += 1
-        return False, 1000
+        logger.error(f"Error checking host {host['host_name']}: {str(e)}")
+        return False
 
 def check_host_thread(host):
     """Thread function to check a host."""
-    success, latency = check_host(host)
+    success, latency = check_host(host, app_config)
     status = "UP" if success else "DOWN"
 
 def run_checks():

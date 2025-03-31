@@ -84,7 +84,7 @@ var utils = {
 }
 
 // Function to create or update a chart
-function createOrUpdateChart(canvasId, hostId, timeRange = '24h') {
+function createOrUpdateChart(canvasId, hostUuid, timeRange = '24h') {
     const ctx = document.getElementById(canvasId).getContext('2d');
     let chart = Chart.getChart(canvasId);
 
@@ -93,7 +93,7 @@ function createOrUpdateChart(canvasId, hostId, timeRange = '24h') {
     }
 
     // Fetch data from API with time range parameter
-    fetch(`/api/metrics/${hostId}?range=${timeRange}&t=${Date.now()}`)
+    fetch(`/api/metrics/${hostUuid}?range=${timeRange}&t=${Date.now()}`)
         .then(response => response.json())
         .then(data => {
             chart = new Chart(ctx, {
@@ -139,9 +139,9 @@ function createOrUpdateChart(canvasId, hostId, timeRange = '24h') {
 }
 
 // Function to refresh chart data periodically
-function startChartRefresh(canvasId, hostId, interval = 300000, timeRange = '24h') { // 5 minutes default
-    createOrUpdateChart(canvasId, hostId, timeRange);
-    return setInterval(() => createOrUpdateChart(canvasId, hostId, timeRange), interval);
+function startChartRefresh(canvasId, hostUuid, interval = 300000, timeRange = '24h') { // 5 minutes default
+    createOrUpdateChart(canvasId, hostUuid, timeRange);
+    return setInterval(() => createOrUpdateChart(canvasId, hostUuid, timeRange), interval);
 }
 
 // Function to stop chart refresh
@@ -156,25 +156,25 @@ function setupGraphModals() {
 
     // Add click event listeners to each button
     graphButtons.forEach(button => {
-        const hostId = button.getAttribute('data-host-id');
-        const chartId = `metricsChart${hostId}`;
+        const hostUuid = button.getAttribute('data-host-uuid');
+        const chartId = `metricsChart${hostUuid}`;
         let refreshIntervalId = null;
 
         button.addEventListener('click', function() {
             // Wait for the modal to be shown before creating the chart
             setTimeout(() => {
                 // Get the modal elements
-                const modal = document.getElementById(`graphModal${hostId}`);
-                const timeRangeSelect = document.getElementById(`timeRange${hostId}`);
-                const refreshIntervalSelect = document.getElementById(`refreshInterval${hostId}`);
-                const autoRefreshToggle = document.getElementById(`autoRefresh${hostId}`);
+                const modal = document.getElementById(`graphModal${hostUuid}`);
+                const timeRangeSelect = document.getElementById(`timeRange${hostUuid}`);
+                const refreshIntervalSelect = document.getElementById(`refreshInterval${hostUuid}`);
+                const autoRefreshToggle = document.getElementById(`autoRefresh${hostUuid}`);
 
                 // Initial chart creation
-                createOrUpdateChart(chartId, hostId, timeRangeSelect.value);
+                createOrUpdateChart(chartId, hostUuid, timeRangeSelect.value);
 
                 // Set up event listeners for controls
                 timeRangeSelect.addEventListener('change', function() {
-                    createOrUpdateChart(chartId, hostId, this.value);
+                    createOrUpdateChart(chartId, hostUuid, this.value);
 
                     // If auto-refresh is enabled, restart it with the new time range
                     if (autoRefreshToggle.checked) {
@@ -182,7 +182,7 @@ function setupGraphModals() {
                             stopChartRefresh(refreshIntervalId);
                         }
                         const interval = parseInt(refreshIntervalSelect.value);
-                        refreshIntervalId = startChartRefresh(chartId, hostId, interval, timeRangeSelect.value);
+                        refreshIntervalId = startChartRefresh(chartId, hostUuid, interval, timeRangeSelect.value);
                     }
                 });
 
@@ -193,7 +193,7 @@ function setupGraphModals() {
                             stopChartRefresh(refreshIntervalId);
                         }
                         const interval = parseInt(this.value);
-                        refreshIntervalId = startChartRefresh(chartId, hostId, interval, timeRangeSelect.value);
+                        refreshIntervalId = startChartRefresh(chartId, hostUuid, interval, timeRangeSelect.value);
                     }
                 });
 
@@ -201,7 +201,7 @@ function setupGraphModals() {
                     if (this.checked) {
                         // Start auto-refresh
                         const interval = parseInt(refreshIntervalSelect.value);
-                        refreshIntervalId = startChartRefresh(chartId, hostId, interval, timeRangeSelect.value);
+                        refreshIntervalId = startChartRefresh(chartId, hostUuid, interval, timeRangeSelect.value);
                         refreshIntervalSelect.disabled = false;
                     } else {
                         // Stop auto-refresh
@@ -273,11 +273,11 @@ function initializeHostsTable() {
                     </td>
                     <td>${host.last_check || 'Never'}</td>
                     <td>
-                        <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#hostDetails${host.id}">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#hostDetails${host.uuid}">
                             Details
                         </button>
-                        <a href="/api/metrics/${host.id}" class="btn btn-sm btn-info">Metrics</a>
-                        <button type="button" class="btn btn-sm btn-primary graph-btn" data-bs-toggle="modal" data-bs-target="#graphModal${host.id}" data-host-id="${host.id}">
+                        <a href="/api/metrics/${host.uuid}" class="btn btn-sm btn-info">Metrics</a>
+                        <button type="button" class="btn btn-sm btn-primary graph-btn" data-bs-toggle="modal" data-bs-target="#graphModal${host.uuid}" data-host-uuid="${host.uuid}">
                             Graph
                         </button>
                     </td>
@@ -288,16 +288,16 @@ function initializeHostsTable() {
                 // Create details modal
                 const detailsModal = document.createElement('div');
                 detailsModal.className = 'modal fade';
-                detailsModal.id = `hostDetails${host.id}`;
+                detailsModal.id = `hostDetails${host.uuid}`;
                 detailsModal.setAttribute('tabindex', '-1');
-                detailsModal.setAttribute('aria-labelledby', `hostDetailsLabel${host.id}`);
+                detailsModal.setAttribute('aria-labelledby', `hostDetailsLabel${host.uuid}`);
                 detailsModal.setAttribute('aria-hidden', 'true');
 
                 detailsModal.innerHTML = `
                     <div class="modal-dialog">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="hostDetailsLabel${host.id}">Host Details: ${host.host_name}</h5>
+                                <h5 class="modal-title" id="hostDetailsLabel${host.uuid}">Host Details: ${host.host_name}</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
@@ -338,7 +338,7 @@ function initializeHostsTable() {
                                 </dl>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-danger" onclick="unmonitorHost(${host.id}, '${host.host_name}')">Unmonitor Host</button>
+                                <button type="button" class="btn btn-danger" onclick="unmonitorHost('${host.uuid}', '${host.host_name}')">Unmonitor Host</button>
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                             </div>
                         </div>
@@ -350,23 +350,23 @@ function initializeHostsTable() {
                 // Create graph modal
                 const graphModal = document.createElement('div');
                 graphModal.className = 'modal fade';
-                graphModal.id = `graphModal${host.id}`;
+                graphModal.id = `graphModal${host.uuid}`;
                 graphModal.setAttribute('tabindex', '-1');
-                graphModal.setAttribute('aria-labelledby', `graphModalLabel${host.id}`);
+                graphModal.setAttribute('aria-labelledby', `graphModalLabel${host.uuid}`);
                 graphModal.setAttribute('aria-hidden', 'true');
 
                 graphModal.innerHTML = `
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="graphModalLabel${host.id}">Metrics Graph: ${host.host_name}</h5>
+                                <h5 class="modal-title" id="graphModalLabel${host.uuid}">Metrics Graph: ${host.host_name}</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
                                 <div class="row mb-3">
                                     <div class="col-md-4">
-                                        <label for="timeRange${host.id}" class="form-label">Time Range:</label>
-                                        <select id="timeRange${host.id}" class="form-select">
+                                        <label for="timeRange${host.uuid}" class="form-label">Time Range:</label>
+                                        <select id="timeRange${host.uuid}" class="form-select">
                                             <option value="5m">5 Minutes</option>
                                             <option value="30m">30 Minutes</option>
                                             <option value="1h">1 Hour</option>
@@ -382,8 +382,8 @@ function initializeHostsTable() {
                                         </select>
                                     </div>
                                     <div class="col-md-4">
-                                        <label for="refreshInterval${host.id}" class="form-label">Refresh Interval:</label>
-                                        <select id="refreshInterval${host.id}" class="form-select" disabled>
+                                        <label for="refreshInterval${host.uuid}" class="form-label">Refresh Interval:</label>
+                                        <select id="refreshInterval${host.uuid}" class="form-select" disabled>
                                             <option value="30000">30 Seconds</option>
                                             <option value="60000">1 Minute</option>
                                             <option value="300000" selected>5 Minutes</option>
@@ -393,15 +393,15 @@ function initializeHostsTable() {
                                     </div>
                                     <div class="col-md-4 d-flex align-items-end">
                                         <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="autoRefresh${host.id}">
-                                            <label class="form-check-label" for="autoRefresh${host.id}">Auto Refresh</label>
+                                            <input class="form-check-input" type="checkbox" id="autoRefresh${host.uuid}">
+                                            <label class="form-check-label" for="autoRefresh${host.uuid}">Auto Refresh</label>
                                         </div>
                                     </div>
                                 </div>
-                                <canvas id="metricsChart${host.id}"></canvas>
+                                <canvas id="metricsChart${host.uuid}"></canvas>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-primary" onclick="createOrUpdateChart('metricsChart${host.id}', ${host.id}, document.getElementById('timeRange${host.id}').value)">Refresh Now</button>
+                                <button type="button" class="btn btn-primary" onclick="createOrUpdateChart('metricsChart${host.uuid}', '${host.uuid}', document.getElementById('timeRange${host.uuid}').value)">Refresh Now</button>
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                             </div>
                         </div>
@@ -421,8 +421,8 @@ function initializeHostsTable() {
 }
 
 // Function to unmonitor a host
-function unmonitorHost(hostId, hostName) {
-    fetch(`/unmonitor_host/${hostId}`, {
+function unmonitorHost(hostUuid, hostName) {
+    fetch(`/unmonitor_host/${hostUuid}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -431,14 +431,14 @@ function unmonitorHost(hostId, hostName) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Store the unmonitored host ID for potential undo
-            window.lastUnmonitoredHostId = hostId;
+            // Store the unmonitored host UUID for potential undo
+            window.lastUnmonitoredHostUuid = hostUuid;
 
             // Get the ID of the entry in the unmonitored_hosts table
             fetch('/api/unmonitored_hosts')
                 .then(response => response.json())
                 .then(unmonitoredHosts => {
-                    // Find the most recently unmonitored host that matches our original host ID
+                    // Find the most recently unmonitored host that matches our original host UUID
                     // We're looking for the host that was just unmonitored
                     const recentlyUnmonitoredHost = unmonitoredHosts.find(host =>
                         host.host_id === data.unmonitored_host_data.host_id &&
@@ -446,7 +446,7 @@ function unmonitorHost(hostId, hostName) {
                     );
 
                     if (recentlyUnmonitoredHost) {
-                        window.lastUnmonitoredHostId = recentlyUnmonitoredHost.id;
+                        window.lastUnmonitoredHostUuid = recentlyUnmonitoredHost.uuid;
 
                         // Update the toast message with the host name
                         document.getElementById('unmonitoredHostName').textContent = hostName || 'Host';
@@ -482,9 +482,9 @@ function unmonitorHost(hostId, hostName) {
 }
 
 // Function to restore host to a monitored state
-function restoreHost(hostId) {
-    if (window.lastUnmonitoredHostId) {
-        fetch(`/restore_host/${window.lastUnmonitoredHostId}`, {
+function restoreHost(hostUuid) {
+    if (window.lastUnmonitoredHostUuid) {
+        fetch(`/restore_host/${window.lastUnmonitoredHostUuid}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -498,7 +498,7 @@ function restoreHost(hostId) {
         })
         .then(data => {
             if (data.success) {
-                console.log('Successfully restored host with ID:', data.restored_host_id);
+                console.log('Successfully restored host with UUID:', data.restored_host_uuid);
 
                 // Hide the toast
                 const undoToast = bootstrap.Toast.getInstance(document.getElementById('undoToast'));
@@ -518,7 +518,7 @@ function restoreHost(hostId) {
             alert('Failed to restore host: ' + error.message);
         });
     } else {
-        console.error('No unmonitored host ID found');
+        console.error('No unmonitored host UUID found');
         alert('Cannot restore: No recently unmonitored host found');
     }
 }
@@ -694,7 +694,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (undoLink) {
         undoLink.addEventListener('click', function(e) {
             e.preventDefault();
-            restoreHost(window.lastUnmonitoredHostId);
+            restoreHost(window.lastUnmonitoredHostUuid);
         });
     }
 

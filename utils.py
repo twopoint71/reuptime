@@ -94,12 +94,12 @@ def check_host(host, config):
             db.execute('''
                 UPDATE hosts
                 SET last_check = CURRENT_TIMESTAMP, is_active = ?
-                WHERE id = ?
-            ''', (1 if success else 0, host['id']))
+                WHERE uuid = ?
+            ''', (1 if success else 0, host['uuid']))
             db.commit()
 
         # Update RRD database
-        rrd_file = get_rrd_path(host['id'], config)
+        rrd_file = get_rrd_path(host['uuid'], config)
         rrd_timestamp = get_last_update(rrd_file)['timestamp'] + 20
 
         if os.path.exists(rrd_file):
@@ -121,7 +121,7 @@ def check_host(host, config):
             db.execute('''
                 UPDATE hosts
                 SET last_check = CURRENT_TIMESTAMP, is_active = 0
-                WHERE id = ?
-            ''', (host['id'],))
+                WHERE uuid = ?
+            ''', (host['uuid'],))
             db.commit()
         return False, 1000

@@ -5,6 +5,7 @@ from datetime import datetime
 from db import get_db
 from utils import setup_directories, check_host
 from rrd_utils import init_rrd, get_rrd_path
+from uuid import uuid4
 
 def register_host_routes(app):
     """Register routes for host management."""
@@ -42,17 +43,20 @@ def register_host_routes(app):
             setup_directories(app.config)
 
             imported_count = 0
-            host_ids = []
+            host_uuids = []
 
             with get_db(app.config) as db:
                 for row in csv_data:
+                    # Generate UUID once and reuse it
+                    new_uuid = str(uuid4())
                     cursor = db.execute('''
                         INSERT INTO hosts (
-                            account_label, account_id, region,
+                            uuid, account_label, account_id, region,
                             host_id, host_ip_address, host_name,
                             created_at, last_check, is_active
-                        ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
                     ''', (
+                        new_uuid,
                         row['Account Label'],
                         row['Account Id'],
                         row['Region'],
@@ -60,22 +64,21 @@ def register_host_routes(app):
                         row['Host IP Address'],
                         row['Hostname']
                     ))
-                    host_id = cursor.lastrowid
-                    host_ids.append(host_id)
+                    host_uuids.append(new_uuid)  # Store the UUID instead of lastrowid
                     imported_count += 1
                 db.commit()
 
             # Initialize RRD database for each new host
-            for host_id in host_ids:
+            for host_uuid in host_uuids:
                 try:
-                    print(f"Initializing RRD for imported host {host_id}")
-                    init_rrd(host_id, app.config)
-                    print(f"RRD initialization successful for imported host {host_id}")
+                    print(f"Initializing RRD for imported host {host_uuid}")
+                    init_rrd(host_uuid, app.config)
+                    print(f"RRD initialization successful for imported host {host_uuid}")
                 except Exception as e:
-                    print(f"Error initializing RRD for imported host {host_id}: {str(e)}")
+                    print(f"Error initializing RRD for imported host {host_uuid}: {str(e)}")
                     # Log the error but don't fail the request
                     with open(app.config['MONITOR_LOG_PATH'], 'a') as f:
-                        f.write(f"[ERROR] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Failed to create RRD file for imported host ID {host_id}: {str(e)}\n")
+                        f.write(f"[ERROR] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Failed to create RRD file for imported host ID {host_uuid}: {str(e)}\n")
 
             # Redirect to the main page with a success parameter
             return redirect(url_for('monitored_hosts', hosts_imported=imported_count))
@@ -102,13 +105,16 @@ def register_host_routes(app):
             setup_directories(app.config)
 
             with get_db(app.config) as db:
+                # Generate UUID once and reuse it
+                new_uuid = str(uuid4())
                 cursor = db.execute('''
                     INSERT INTO hosts (
-                        account_label, account_id, region,
+                        uuid, account_label, account_id, region,
                         host_id, host_ip_address, host_name,
                         created_at, last_check, is_active
-                    ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
                 ''', (
+                    new_uuid,
                     request.form['account_label'],
                     request.form['account_id'],
                     request.form['region'],
@@ -116,19 +122,18 @@ def register_host_routes(app):
                     request.form['host_ip_address'],
                     request.form['host_name']
                 ))
-                host_id = cursor.lastrowid
                 db.commit()
 
-            # Initialize RRD database for the new host
+            # Use the UUID we generated for RRD
             try:
-                print(f"Initializing RRD for host {host_id}")
-                init_rrd(host_id, app.config)
-                print(f"RRD initialization successful for host {host_id}")
+                print(f"Initializing RRD for host {new_uuid}")
+                init_rrd(new_uuid, app.config)
+                print(f"RRD initialization successful for host {new_uuid}")
             except Exception as e:
-                print(f"Error initializing RRD for host {host_id}: {str(e)}")
+                print(f"Error initializing RRD for host {new_uuid}: {str(e)}")
                 # Log the error but don't fail the request
                 with open(app.config['MONITOR_LOG_PATH'], 'a') as f:
-                    f.write(f"[ERROR] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Failed to create RRD file for host ID {host_id}: {str(e)}\n")
+                    f.write(f"[ERROR] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Failed to create RRD file for host ID {new_uuid}: {str(e)}\n")
 
             # Redirect to the main page with a success parameter
             return redirect(url_for('monitored_hosts', host_added=request.form['host_name']))
@@ -137,117 +142,136 @@ def register_host_routes(app):
             print(f"Error adding host: {str(e)}")  # Add logging for debugging
             return jsonify({'error': str(e)}), 500
 
-    @app.route('/check_host/<int:host_id>', methods=['POST'])
-    def check_host_route(host_id):
+    @app.route('/check_host/<uuid:host_uuid>', methods=['POST'])
+    def check_host_route(host_uuid):
         """Route to check a specific host's status."""
-        with get_db(app.config) as db:
-            hosts = db.execute('SELECT * FROM hosts WHERE id = ?', (host_id,)).fetchall()
-            for host in hosts:
-                success = check_host(host, app.config)
-            if not host:
-                return jsonify({'success': False, 'error': 'Host not found'}), 404
+        try:
+            with get_db(app.config) as db:
+                # Get the host details
+                host = db.execute('''
+                    SELECT account_label, account_id, region,
+                           host_id, host_ip_address, host_name,
+                           created_at, last_check, is_active
+                    FROM hosts
+                    WHERE uuid = ?
+                ''', (host_uuid,)).fetchone()
 
-        success = check_host(host, app.config)
-        return jsonify({
-            'success': True,
-            'is_active': 1 if success else 0
-        })
+                if not host:
+                    return jsonify({'success': False, 'error': 'Host not found'}), 404
 
-    @app.route('/unmonitor_host/<int:host_id>', methods=['POST'])
-    def unmonitor_host(host_id):
-        """Unmonitor a host and its associated RRD database."""
-        with get_db(app.config) as db:
-            # Get the host to unmonitor
-            host = db.execute('SELECT * FROM hosts WHERE id = ?', (host_id,)).fetchone()
-            if not host:
-                return jsonify({'success': False, 'error': 'Host not found'}), 404
+                # Check the host's status
+                is_active = check_host(host, app.config)
 
-            # Store host data in unmonitored_hosts table
-            db.execute('''
-                INSERT INTO unmonitored_hosts (
-                    account_label, account_id, region,
-                    host_id, host_ip_address, host_name,
-                    created_at, last_check, is_active
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                host['account_label'],
-                host['account_id'],
-                host['region'],
-                host['host_id'],
-                host['host_ip_address'],
-                host['host_name'],
-                host['created_at'],
-                host['last_check'],
-                host['is_active']
-            ))
-
-            # Delete RRD database if it exists
-            rrd_file = get_rrd_path(host_id, app.config)
-            if os.path.exists(rrd_file):
-                os.remove(rrd_file)
-
-            db.execute('DELETE FROM hosts WHERE id = ?', (host_id,))
-            db.commit()
-
-            # Return the unmonitored host data in the response
-            host_dict = dict(host)
-            # Convert datetime objects to strings
-            for key in ['created_at', 'last_check']:
-                if host_dict[key] and not isinstance(host_dict[key], str):
-                    host_dict[key] = host_dict[key].strftime('%Y-%m-%d %H:%M:%S')
-
-            return jsonify({
-                'success': True,
-                'unmonitored_host_data': host_dict
-            })
-
-    @app.route('/restore_host/<int:host_id>', methods=['POST'])
-    def restore_host(host_id):
-        """Restore the last unmonitored host."""
-        with get_db(app.config) as db:
-            # Get the unmonitored host
-            unmonitored_host = db.execute('SELECT * FROM unmonitored_hosts WHERE id = ?', (host_id,)).fetchone()
-
-            if not unmonitored_host:
-                return jsonify({'success': False, 'error': 'No host to restore'}), 404
-
-            try:
-                # Insert the host back into the hosts table
-                cursor = db.execute('''
-                    INSERT INTO hosts (
-                        account_label, account_id, region,
-                        host_id, host_ip_address, host_name,
-                        created_at, last_check, is_active
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    unmonitored_host['account_label'],
-                    unmonitored_host['account_id'],
-                    unmonitored_host['region'],
-                    unmonitored_host['host_id'],
-                    unmonitored_host['host_ip_address'],
-                    unmonitored_host['host_name'],
-                    unmonitored_host['created_at'],
-                    unmonitored_host['last_check'],
-                    unmonitored_host['is_active']
-                ))
-                restored_id = cursor.lastrowid
-
-                # Initialize RRD database for the restored host
-                init_rrd(restored_id, app.config)
-
-                # Remove the host from unmonitored_hosts
-                db.execute('DELETE FROM unmonitored_hosts WHERE id = ?', (host_id,))
+                # Update the host's status in the database
+                db.execute('''
+                    UPDATE hosts
+                    SET is_active = ?,
+                        last_check = datetime('now')
+                    WHERE uuid = ?
+                ''', (1 if is_active else 0, host_uuid))
                 db.commit()
 
-                # Return the restored host ID
                 return jsonify({
                     'success': True,
-                    'restored_host_id': restored_id
+                    'is_active': 1 if is_active else 0
                 })
-            except Exception as e:
-                db.rollback()  # Rollback any changes if an error occurs
-                print(f"Error restoring host: {str(e)}")  # Add logging for debugging
+
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/unmonitor_host/<uuid:host_uuid>', methods=['POST'])
+    def unmonitor_host(host_uuid):
+        """Route to unmonitor a host."""
+        try:
+            # Convert UUID to string
+            host_uuid_str = str(host_uuid)
+
+            with get_db(app.config) as db:
+                # Get the host details before removing it
+                host = db.execute('''
+                    SELECT id, account_label, account_id, region,
+                           host_id, host_ip_address, host_name,
+                           created_at, last_check, is_active
+                    FROM hosts
+                    WHERE uuid = ?
+                ''', (host_uuid_str,)).fetchone()
+
+                if not host:
+                    return jsonify({'success': False, 'error': 'Host not found'}), 404
+
+                # Insert into unmonitored_hosts table
+                db.execute('''
+                    INSERT INTO unmonitored_hosts (
+                        uuid, account_label, account_id, region,
+                        host_id, host_ip_address, host_name,
+                        created_at, last_check, is_active, unmonitored_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                ''', (
+                    host_uuid_str, host['account_label'], host['account_id'],
+                    host['region'], host['host_id'], host['host_ip_address'],
+                    host['host_name'], host['created_at'], host['last_check'],
+                    host['is_active']
+                ))
+
+                # Delete from hosts table
+                db.execute('DELETE FROM hosts WHERE uuid = ?', (host_uuid_str,))
+                db.commit()
+
                 return jsonify({
-                    'success': False,
-                    'error': f"Failed to restore host: {str(e)}"
-                }), 500
+                    'success': True,
+                    'unmonitored_host_data': {
+                        'uuid': host_uuid_str,
+                        'host_id': host['host_id'],
+                        'host_name': host['host_name']
+                    }
+                })
+
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/restore_host/<uuid:host_uuid>', methods=['POST'])
+    def restore_host(host_uuid):
+        """Route to restore a host to monitored state."""
+        try:
+            # Convert UUID to string
+            host_uuid_str = str(host_uuid)
+
+            with get_db(app.config) as db:
+                # Get the unmonitored host details
+                unmonitored_host = db.execute('''
+                    SELECT account_label, account_id, region,
+                           host_id, host_ip_address, host_name,
+                           created_at, last_check, is_active
+                    FROM unmonitored_hosts
+                    WHERE uuid = ?
+                ''', (host_uuid_str,)).fetchone()
+
+                if not unmonitored_host:
+                    return jsonify({'success': False, 'error': 'No host to restore'}), 404
+
+                # Insert back into hosts table
+                db.execute('''
+                    INSERT INTO hosts (
+                        uuid, account_label, account_id, region,
+                        host_id, host_ip_address, host_name,
+                        created_at, last_check, is_active
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    host_uuid_str, unmonitored_host['account_label'],
+                    unmonitored_host['account_id'], unmonitored_host['region'],
+                    unmonitored_host['host_id'], unmonitored_host['host_ip_address'],
+                    unmonitored_host['host_name'], unmonitored_host['created_at'],
+                    unmonitored_host['last_check'], unmonitored_host['is_active']
+                ))
+
+                # Delete from unmonitored_hosts table
+                db.execute('DELETE FROM unmonitored_hosts WHERE uuid = ?', (host_uuid_str,))
+                db.commit()
+
+                return jsonify({
+                    'success': True,
+                    'restored_host_uuid': host_uuid_str
+                })
+
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500

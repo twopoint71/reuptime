@@ -12,12 +12,12 @@ from rrd_utils import get_rrd_path, init_rrd, fetch_rrd_data, format_rrd_data_fo
 def register_api_routes(app):
     """Register API routes for the application."""
 
-    @app.route('/metrics/<int:host_id>')
-    def get_metrics(host_id):
+    @app.route('/metrics/<uuid:host_uuid>')
+    def get_metrics(host_uuid):
         """Redirect to the API metrics endpoint for consistency."""
         # Get the query string parameters
         query_string = request.query_string.decode('utf-8')
-        target_url = f"/api/metrics/{host_id}"
+        target_url = f"/api/metrics/{host_uuid}"
 
         # Append query string if it exists
         if query_string:
@@ -25,8 +25,8 @@ def register_api_routes(app):
 
         return redirect(target_url, code=301)
 
-    @app.route('/api/metrics/<int:host_id>')
-    def get_metrics_data(host_id):
+    @app.route('/api/metrics/<uuid:host_uuid>')
+    def get_metrics_data(host_uuid):
         """API endpoint to fetch metric data for Chart.js"""
         # Parse time range parameter
         time_range = request.args.get('range', '24h')
@@ -64,16 +64,16 @@ def register_api_routes(app):
             # Default to 24 hours
             start_time = end_time - 86400
 
-        rrd_file = get_rrd_path(host_id, app.config)
+        rrd_file = get_rrd_path(host_uuid, app.config)
         if not os.path.exists(rrd_file):
             print(f"RRD file not found: {rrd_file}")
             # Try to create the RRD file
             try:
-                print(f"Attempting to create RRD file for host ID {host_id}")
-                init_rrd(host_id, app.config)
-                print(f"Successfully created RRD file for host ID {host_id}")
+                print(f"Attempting to create RRD file for host UUID {host_uuid}")
+                init_rrd(host_uuid, app.config)
+                print(f"Successfully created RRD file for host UUID {host_uuid}")
             except Exception as e:
-                print(f"Failed to create RRD file for host ID {host_id}: {str(e)}")
+                print(f"Failed to create RRD file for host UUID {host_uuid}: {str(e)}")
                 return jsonify({'error': f'RRD file not found and could not be created: {str(e)}'}), 500
 
         try:
@@ -141,17 +141,17 @@ def register_api_routes(app):
     def restore_host_api():
         """API endpoint to restore an unmonitored host"""
         data = request.json
-        if not data or 'host_id' not in data:
-            return jsonify({'success': False, 'error': 'Host ID is required'}), 400
+        if not data or 'host_uuid' not in data:
+            return jsonify({'success': False, 'error': 'Host UUID is required'}), 400
 
-        host_id = data['host_id']
+        host_uuid = data['host_uuid']
 
         # Call the existing restore_host function
         from routes.host_routes import register_host_routes
         # Get the restore_host function from the app
         restore_host = app.view_functions.get('restore_host')
         if restore_host:
-            response = restore_host(host_id)
+            response = restore_host(host_uuid)
 
             # If the response is a tuple, it means there was an error
             if isinstance(response, tuple):
@@ -165,19 +165,19 @@ def register_api_routes(app):
     def permanently_delete_host():
         """API endpoint to permanently delete a host from unmonitored_hosts table"""
         data = request.json
-        if not data or 'host_id' not in data:
-            return jsonify({'success': False, 'error': 'Host ID is required'}), 400
+        if not data or 'host_uuid' not in data:
+            return jsonify({'success': False, 'error': 'Host UUID is required'}), 400
 
-        host_id = data['host_id']
+        host_uuid = data['host_uuid']
 
         with get_db(app.config) as db:
             # Check if the host exists
-            host = db.execute('SELECT * FROM unmonitored_hosts WHERE id = ?', (host_id,)).fetchone()
+            host = db.execute('SELECT * FROM unmonitored_hosts WHERE uuid = ?', (host_uuid,)).fetchone()
             if not host:
                 return jsonify({'success': False, 'error': 'Host not found'}), 404
 
             # Delete the host from unmonitored_hosts table
-            db.execute('DELETE FROM unmonitored_hosts WHERE id = ?', (host_id,))
+            db.execute('DELETE FROM unmonitored_hosts WHERE uuid = ?', (host_uuid,))
             db.commit()
 
             return jsonify({'success': True})
@@ -380,7 +380,7 @@ def register_api_routes(app):
 
             # Collect uptime data from each host's RRD file
             for host in hosts:
-                rrd_file = get_rrd_path(host['id'], app.config)
+                rrd_file = get_rrd_path(host['uuid'], app.config)
                 if os.path.exists(rrd_file):
                     rrd_data = fetch_rrd_data(rrd_file, start_time=start_time, end_time=end_time)
                     if rrd_data:

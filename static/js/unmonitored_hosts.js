@@ -50,7 +50,7 @@ function showToast(message, type = 'success') {
 
 async function initiateRestoreHost(event) {
     var delay = new utils.actionDelay();
-    delay.data = { "hostId": event.target.getAttribute('data-host-id') };
+    delay.data = { "host_uuid": event.target.getAttribute('data-host-uuid') };
     delay.callback = restoreHost;
     delay.initiateDelay(event);
 }
@@ -62,7 +62,7 @@ async function restoreHost(params) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ host_id: params.hostId }),
+            body: JSON.stringify({ host_uuid: params.host_uuid }),
         });
 
         const data = await response.json();
@@ -89,7 +89,7 @@ async function restoreHost(params) {
 
 async function initiateDeleteHost(event) {
     var delay = new utils.actionDelay();
-    delay.data = { "hostId": event.target.getAttribute('data-host-id') };
+    delay.data = { "host_uuid": event.target.getAttribute('data-host-uuid') };
     delay.callback = permanentlyDeleteHost;
     delay.initiateDelay(event);
 }
@@ -101,7 +101,7 @@ async function permanentlyDeleteHost(params) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ host_id: params.hostId }),
+            body: JSON.stringify({ host_uuid: params.host_uuid }),
         });
 
         const data = await response.json();
@@ -155,8 +155,8 @@ async function populateUnmonitoredHostsTable() {
             <td><span class="badge ${statusClass}">${statusText}</span></td>
             <td>${formattedDate}</td>
             <td>
-                <button class="btn btn-sm btn-success restore-btn" data-host-id="${host.id}">Restore</button>
-                <button class="btn btn-sm btn-danger delete-btn" data-host-id="${host.id}">Delete Permanently</button>
+                <button class="btn btn-sm btn-success restore-btn" data-host-uuid="${host.uuid}">Restore</button>
+                <button class="btn btn-sm btn-danger delete-btn" data-host-uuid="${host.uuid}">Delete Permanently</button>
             </td>
         `;
 
