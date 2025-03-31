@@ -132,7 +132,7 @@ def check_host(host, app_config):
 
 def check_host_thread(host):
     """Thread function to check a host."""
-    success, latency = check_host(host, app_config)
+    success = check_host(host, app_config)  # Only get the success value
     status = "UP" if success else "DOWN"
 
 def run_checks():
