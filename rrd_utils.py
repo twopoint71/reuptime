@@ -2,17 +2,39 @@ import rrdtool
 import time
 from datetime import datetime, timedelta
 import os
+import sqlite3
 
 def get_rrd_path(host_id, app_config=None):
     """Get the correct RRD file path based on testing configuration."""
-    if "RRD_DIR" not in app_config:
+    if app_config is None:
         app_config = {'TESTING': False}
+
+    # Get RRD directory from config or use default
+    if "RRD_DIR" not in app_config:
         rrd_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance/rrd')
     else:
         rrd_dir = app_config['RRD_DIR']
 
     # Ensure the directory exists
     os.makedirs(rrd_dir, exist_ok=True)
+
+    # If host_id is an integer, it's a legacy ID - get the UUID
+    if isinstance(host_id, int):
+        try:
+            with sqlite3.connect(app_config['DATABASE']) as db:
+                cursor = db.execute("""
+                    SELECT uuid FROM hosts WHERE id = ?
+                    UNION
+                    SELECT uuid FROM unmonitored_hosts WHERE id = ?
+                """, (host_id, host_id))
+                result = cursor.fetchone()
+                if result:
+                    host_id = result[0]
+                else:
+                    raise ValueError(f"No UUID found for host ID {host_id}")
+        except Exception as e:
+            print(f"Error getting UUID for host ID {host_id}: {str(e)}")
+            raise
 
     return os.path.join(rrd_dir, f'host_{host_id}.rrd')
 
@@ -430,6 +452,17 @@ def update_aggregate_rrd(rrd_file, timestamp, hosts_up, hosts_down, uptime_perce
         hosts_up = int(hosts_up)
         hosts_down = int(hosts_down)
         uptime_percent = float(uptime_percent)
+
+        # Get the last update time
+        try:
+            last_update = rrdtool.lastupdate(rrd_file)
+            if isinstance(last_update, dict) and 'date' in last_update:
+                last_timestamp = int(last_update['date'].timestamp())
+                # Ensure new timestamp is at least 1 second after last update
+                if timestamp <= last_timestamp:
+                    timestamp = last_timestamp + 1
+        except Exception as e:
+            print(f"Warning: Could not get last update time: {str(e)}")
 
         # Create the update string with all three values
         update_string = f'{timestamp}:{hosts_up}:{hosts_down}:{uptime_percent}'
