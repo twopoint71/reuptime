@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+
+{% block title %}ReUptime - Monitored Hosts{% endblock %}
+
+{% block content %}
+{% load json_filters %}
+
+<h1>Host Monitoring</h1>
+
+<!-- Actions -->
+<form name="actions">
+    <div class="row mb-3">
+        <div id="actionButtons" class="col-md-6">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHostModal">
+                Add Host
+            </button>
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importHostsModal">
+                Import Hosts
+            </button>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="row float-end">
+                <label class="col-sm-auto col-form-label pe-1" for="sortBy">Sort By</label>
+                <div class="col-sm-auto ps-1">
+                    <select id="sortBy" class="form-select" data-table-id="hostsTable" onchange="utils.tableColumnSort()">
+                        <option value="1">Hostname</option>
+                        <option value="2">IP Address</option>
+                        <option value="3">Region</option>
+                        <option value="4" selected>Status</option>
+                        <option value="5">Last Check</option>
+                    </select>
+                </div>
+                <label class="col-sm-auto col-form-label pe-1" for="orderBy">Order</label>
+                <div class="col-sm-auto ps-1">
+                    <select id="orderBy" class="form-select" data-table-id="hostsTable" onchange="utils.tableColumnSort()">
+                        <option value="ASC" selected>Ascending</option>
+                        <option value="DESC">Descending</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Hosts Table -->
+<div class="card">
+    <div class="card-header">
+        Hosts
+    </div>
+    <div class="card-body">
+        <table class="table" id="hostsTable">
+            <thead>
+                <tr>
+                    <th>Hostname</th>
+                    <th>IP Address</th>
+                    <th>Region</th>
+                    <th>Status</th>
+                    <th>Available <br>Allotment</th>
+                    <th>Last Check</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for host in host_list %}
+                <tr data-host="{{ host|model_to_json }}">
+                    <td>{{ host.host_name }}</td>
+                    <td>{{ host.host_ip_address }}</td>
+                    <td>{{ host.region }}</td>
+                    <td>
+                        <span class="badge {% if host.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                            {% if host.is_active %}UP{% else %}DOWN{% endif %}
+                        </span>
+                    </td>
+                    <td>{{ host.downtime_allotment }}</td>
+                    <td>{{ host.last_check|date:"Y-m-d H:i" }} UTC</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#hostDetailsModal" onclick="populateHostDetailsModal(this)">Details</button>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#hostGraphModal" onclick="populateHostGraphModal(this)">Graph</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Host Modal -->
+<div class="modal fade" id="addHostModal" tabindex="-1" aria-labelledby="addHostModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addHostModalLabel">Add Host</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addHostForm" action="/monitored_hosts/add" method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <!-- Left Column -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="account_label" class="form-label">Account Label</label>
+                                <input type="text" class="form-control" id="account_label" name="account_label" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="account_id" class="form-label">Account Id</label>
+                                <input type="text" class="form-control" id="account_id" name="account_id">
+                            </div>
+                            <div class="mb-3">
+                                <label for="region" class="form-label">Region</label>
+                                <input type="text" class="form-control" id="region" name="region" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="host_id" class="form-label">Host Id</label>
+                                <input type="text" class="form-control" id="host_id" name="host_id" required>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="host_ip_address" class="form-label">Host IP Address</label>
+                                <input type="text" class="form-control" id="host_ip_address" name="host_ip_address" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="host_name" class="form-label">Hostname</label>
+                                <input type="text" class="form-control" id="host_name" name="host_name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="downtime_allotment" class="form-label">Downtime Allotment</label>
+                                <input type="number" class="form-control" name="downtime_allotment" value="">
+                            </div>
+                            <div class="mb-3">
+                                <label for="monitor_type_add" class="form-label">Monitor Type</label>
+                                <select class="form-select" id="monitor_type_add" name="monitor_type">
+                                    <option value="icmp" selected>ICMP</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="monitor_params" class="form-label">Monitor Parameters</label>
+                                <input type="text" class="form-control" name="monitor_params" value="">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Full Width Submit Button -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary w-100">Add Host</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Hosts Modal -->
+<div class="modal fade" id="importHostsModal" tabindex="-1" aria-labelledby="importHostsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importHostsModalLabel">Import Hosts</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="importHostsForm" action="/import" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="csv_file" class="form-label">CSV File</label>
+                        <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                    </div>
+                    <div class="mb-3">
+                        <p>CSV should have the following headers:</p>
+                        <ul>
+                            <li>Account Label</li>
+                            <li>Account Id</li>
+                            <li>Region</li>
+                            <li>Host Id</li>
+                            <li>Host IP Address</li>
+                            <li>Hostname</li>
+                        </ul>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Import</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Host Details Modal -->
+<div class="modal fade" id="hostDetailsModal" tabindex="-1" aria-labelledby="hostDetailsModalLabel" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Host Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="container">
+                    <div class="card mb-3" id="hostDetailsCard">
+                        <div class="card-header">
+                            <h5 class="card-title">Host <span name="hostName"></span></h5>
+                        </div>
+                        <div class="card-body pt-0">
+                            <table class="table table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td>Account Label</td>
+                                        <td name="account_label"></td>
+                                        <td>Account ID</td>
+                                        <td name="account_id"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Region</td>
+                                        <td name="region"></td>
+                                        <td>Instance ID</td>
+                                        <td name="host_id"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Instance IP</td>
+                                        <td name="host_ip_address"></td>
+                                        <td>Hostname</td>
+                                        <td name="host_name"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Status</td>
+                                        <td name="is_active"></td>
+                                        <td>Created At</td>
+                                        <td name="created_at"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card" id="hostSettingsCard">
+                        <div class="card-header">
+                            <h5 class="card-title">Host Settings</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" action="/monitored_hosts/settings">
+                                {% csrf_token %}
+                                <table class="table table-borderless mb-0">
+                                    <tbody>
+                                        <tr>
+                                            <td><label for="downtime_allotment" class="form-label">Downtime Allotment</label></td>
+                                            <td><input type="number" class="form-control" name="downtime_allotment" value="0"></td>
+                                        </tr>
+                                        <tr>
+                                            <td><label for="monitor_type_settings" class="form-label">Monitor Type</label></td>
+                                            <td>
+                                                <select class="form-select" id="monitor_type_settings" name="monitor_type">
+                                                    <option value="icmp" selected>ICMP</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><label for="monitor_params" class="form-label">Monitor Params</label></td>
+                                            <td><input type="text" class="form-control" name="monitor_params" value=""></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-end pb-0" colspan="2">
+                                                <input type="hidden" name="uuid" value="">
+                                                <button type="submit" class="btn btn-danger" name="action" value="unmonitorHost">Unmonitor Host</button>
+                                                <button type="submit" class="btn btn-primary" name="action" value="updateHost">Update Host</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </form>
+                        </div>
+                    </div>
+                </div>                    
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Metrics Graph Modal -->
+<div class="modal fade" id="hostGraphModal" tabindex="-1" aria-labelledby="hostGraphModalLabel" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Metrics Graph: <span name="host_name"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/monitored_hosts.js"></script>
+{% endblock %}

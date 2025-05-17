@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Unmonitored Hosts - ReUptime{% endblock %}
+
+{% block content %}
+{% load json_filters %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Unmonitored Hosts</h1>
+</div>
+
+<form name="actions">
+    <div class="row mb-0">
+        <div class="col-md-12">
+            <div class="row float-end">
+                <label class="col-sm-auto col-form-label pe-1" for="sortBy">Sort By</label>
+                <div class="col-sm-auto ps-1">
+                    <select id="sortBy" class="form-select form-select-sm" data-table-id="hostsTable" onchange="utils.tableColumnSort()">
+                        <option value="1" selected>Hostname</option>
+                        <option value="2">IP Address</option>
+                        <option value="3">Region</option>
+                        <option value="4">Status</option>
+                        <option value="5">Unmonitored At</option>
+                    </select>
+                </div>
+                <label class="col-sm-auto col-form-label pe-1" for="orderBy">Order</label>
+                <div class="col-sm-auto ps-1">
+                    <select id="orderBy" class="form-select form-select-sm" data-table-id="hostsTable" onchange="utils.tableColumnSort()">
+                        <option value="ASC" selected>Ascending</option>
+                        <option value="DESC">Descending</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-header">
+        Unmonitored Hosts
+    </div>
+    <div class="card-body">
+        <table class="table" id="hostsTable">
+            <thead>
+                <tr>
+                    <th>Hostname</th>
+                    <th>IP Address</th>
+                    <th>Region</th>
+                    <th>Status</th>
+                    <th>Unmonitored At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for host in host_list %}
+                <tr data-host="{{ host|model_to_json }}">
+                    <td>{{ host.host_name }}</td>
+                    <td>{{ host.host_ip_address }}</td>
+                    <td>{{ host.region }}</td>
+                    <td>
+                        <span class="badge {% if host.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                            {% if host.is_active %}UP{% else %}DOWN{% endif %}
+                        </span>
+                    </td>
+                    <td>{{ host.last_check|date:"Y-m-d H:i" }} UTC</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" onmousedown="remonitorHost.init(this)">Restore</button>
+                        <button class="btn btn-sm btn-danger" onmousedown="deleteHost.init(this)">Delete Permanently</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/unmonitored_hosts.js"></script>
+{% endblock %}

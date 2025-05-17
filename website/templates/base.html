@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ReUptime - Host Monitoring{% endblock %}</title>
+    <link rel="icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/font-awesome-free.min.css">
+    <script>
+        if (localStorage.getItem('theme') === null) {
+            localStorage.setItem('theme', 'dark');
+        }
+        function setTheme(theme) {
+            localStorage.setItem('theme', theme);
+            document.body.setAttribute('data-bs-theme', theme);
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            setTheme(localStorage.getItem('theme'));
+        });
+    </script>
+    {% block head %}{% endblock %}
+</head>
+<body data-bs-theme="dark">
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">ReUptime</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Summary</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/monitored_hosts' %}active{% endif %}" href="/monitored_hosts">Monitored Hosts</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/unmonitored_hosts' %}active{% endif %}" href="/unmonitored_hosts">Unmonitored Hosts</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/log_monitor' %}active{% endif %}" href="/log_monitor">Log Monitor</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/admin_tools' %}active{% endif %}" href="/admin_tools">Admin Tools</a>
+                    </li>
+                </ul>
+                <!-- Theme Toggle in Navbar -->
+                <div class="nav-item">
+                    <button class="btn btn-outline-secondary" onclick="toggleTheme(this)">
+                        <i class="fas fa-sun"></i>
+                        <span class="ms-2 d-none d-md-inline">Toggle Light Mode</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    {% if messages %}
+    {% load message_filters %}
+    <div class="container mt-4">
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|bootstrap_alert_class }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="container mt-4">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/chart.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        function toggleTheme(button) {
+            const theme = document.body.dataset.bsTheme;
+            if (theme == 'light') {
+                button.innerHTML = '<i class="fas fa-sun"></i> <span class="ms-2 d-none d-md-inline">Toggle Light Mode</span>';
+                setTheme('dark');
+            } else {
+                button.innerHTML = '<i class="fas fa-moon"></i> <span class="ms-2 d-none d-md-inline">Toggle Dark Mode</span>';
+                setTheme('light');
+            }
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

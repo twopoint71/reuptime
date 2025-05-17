@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}ReUptime - Host Monitoring{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-3 d-flex flex-column gap-3">
+        <div class="card h-100 flex-fill" id="monitoredHostsCard">
+            <div class="card-header">
+                <h5 class="mb-0">Monitored Hosts</h5>
+            </div>
+            <div class="card-body">
+                <!-- Up vs Down Section -->
+                <div class="mb-4">
+                    <h6 class="mb-2">Up vs Down
+                        <span data-bs-toggle="tooltip" title="The state of monitored hosts at a glance.">
+                        <i class="fas fa-circle-info" style="cursor: pointer;"></i>
+                    </span>
+                    </h6>
+                    <canvas name="monitoredUpVsDown"></canvas>
+                </div>
+                <!-- Downtime Allotment Section -->
+                <div>
+                    <div class="d-flex align-items-center mb-2">
+                        <h6 class="mb-0 flex-grow-1">Downtime Allotment
+                        <span data-bs-toggle="tooltip" title="Downtime allotment gives each host a bit of grace time for things like maintenance reboots. As long as the host stays within this limit over a two-week period, it will not be marked as down. The allotment resets every two weeks.">
+                            <i class="fas fa-circle-info" style="cursor: pointer;"></i>
+                        </span>
+                    </h6>
+                    </div>
+                    <canvas name="downtimeAllotment"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="card h-100" id="aggregateUptimeCard" style="min-height: 100%;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Aggregate Uptime: <span name="title"></span></h5>
+                <div>
+                    <select class="form-select form-select-sm" name="monitorType" onchange="summary.refresh()">
+                        <option value="icmp" selected>Monitor: ICMP</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12" name="graph"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/summary.js"></script>
+{% endblock %}

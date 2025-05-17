@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}ReUptime - Admin Tools{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Admin Tools</h1>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div id="monitorCard" class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Monitor Status</h5>
+                <select name="monitor_type" class="form-select form-select-sm me-2" style="width: auto;" aria-label="Select Monitor Type">
+                    <option value="icmp">Monitor: ICMP</option>
+                </select>
+            </div>
+            <div class="card-body">
+                <p><strong>Monitor:</strong> <span name="monitor_type">Loading...</span></p>
+                <p><strong>Status:</strong> <span name="status">Loading...</span></p>
+                <p><strong>Process ID:</strong> <span name="pid">Loading...</span></p>
+                <p><strong>Uptime:</strong> <span name="uptime">Loading...</span></p>
+                <p><strong>Last update:</strong> <span name="last_active">Loading...</span></p>
+                <div class="mt-3">
+                    <button class="btn btn-sm btn-success me-2" name="startMonitorBtn" onclick="monitor.start(this)">Start Monitor</button>
+                    <button class="btn btn-sm btn-danger me-2" name="stopMonitorBtn" onclick="monitor.stop(this)">Stop Monitor</button>
+                    <button class="btn btn-sm btn-primary" name="refreshStatusBtn" onclick="monitor.refresh(this)">Refresh Status</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div id="systemInfoCard" class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">System Information</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Monitored Hosts:</strong> <span name="monitored_hosts">Loading...</span></p>
+                <p><strong>Unmonitored Hosts:</strong> <span name="unmonitored_hosts">Loading...</span></p>
+                <p><strong>Server Uptime:</strong> <span name="server_uptime">Loading...</span></p>
+                <p><strong>Server Time:</strong> <span name="server_time">Loading...</span></p>
+                <div class="mt-3">
+                    <button name="refreshInfoBtn" class="btn btn-sm btn-primary" onclick="systemInfo.refresh(this)">Refresh Info</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card" id="globalSettingsCard">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Global Settings</h5>
+            </div>
+            <div class="card-body">
+                <form name="globalSettingsForm" method="POST" action="/admin_tools/global_settings">
+                    {% csrf_token %}
+                    <table class="table table-sm w-100">
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <p class="mb-0"><strong>Downtime allotment</strong></p>
+                                    <small class="mb-0">
+                                        Time in seconds a host is allowed to be considered down. Used so maintenance events are not counted as downtime.<br>
+                                        Each host downtime allotment is reset every 2 weeks.
+                                    </small>
+                                </td>
+                                <td>            
+                                    <input type="number" class="form-control" name="downtimeAllotment" value="{{ default_downtime_allotment }}">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-sm btn-primary">Save Global Settings</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/admin_tools.js"></script>
+{% endblock %}
