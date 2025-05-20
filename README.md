@@ -21,7 +21,7 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
 ## Docker-compose Start
 1. Docker compose to build and start
    ```
-   docker-compose up -d --build
+   sudo docker-compose up -d --build
    ```
   
 ## Non-docker-compose Start
@@ -43,7 +43,7 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
         --volume reuptime_data:/app/instance \
         --restart unless-stopped \
         --cap-add=NET_ADMIN \
-        --environment TZ="Greenwich Mean Time" \
+        --env TZ="Greenwich Mean Time" \
         reuptime:latest
     ```
 
