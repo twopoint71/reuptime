@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    image: reuptime:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - reuptime_data:/app/instance
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - TZ=Greenwich Mean Time
+
+volumes:
+  reuptime_data:
+    name: reuptime_data

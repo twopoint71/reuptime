@@ -3,3 +3,4 @@ Django==5.2.1
 psutil==7.0.0
 rrdtool==0.1.16
 sqlparse==0.5.3
+gunicorn==21.2.0
