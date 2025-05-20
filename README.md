@@ -11,19 +11,43 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
 - **Responsive UI**: Mobile-friendly interface with dark mode support
 - **Low Resource Usage**: Minimal system requirements for the monitoring daemon
 
-## Quick Start
-
+## Base Start
 1. Clone the repository:
    ```
    git clone https://github.com/twopoint71/reuptime.git
    cd reuptime
    ```
 
-2. Docker compose to build and start
+## Docker-compose Start
+1. Docker compose to build and start
    ```
    docker-compose up -d --build
    ```
   
+## Non-docker-compose Start
+1. Build the container
+    ```
+    sudo docker build -t reuptime:latest .
+    ```
+
+2. Create docker volume
+    ```
+    sudo docker volume create reuptime_data
+    ```
+
+3. Start container
+    ```
+    sudo docker run -d \
+        --name reuptime \
+        --publish 8000:8000 \
+        --volume reuptime_data:/app/instance \
+        --restart unless-stopped \
+        --cap-add=NET_ADMIN \
+        --environment TZ="Greenwich Mean Time" \
+        reuptime:latest
+    ```
+
+## After Start
 3. Access the web interface at http://localhost:8000
 
 ## Architecture
