@@ -29,8 +29,8 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-=xzk3)6xy!%te-
 # Get ALLOWED_HOSTS from environment variable, default to ['*'] if not set
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
-# CSRF_TRUSTED_ORGINS is used to allow CSRF tokens to be used for requests from the allowed hosts
-CSRF_TRUSTED_ORGINS = [f"https://{host}" for host in ALLOWED_HOSTS]
+# CSRF_TRUSTED_ORIGINS is used to allow CSRF tokens to be used for requests from the allowed hosts
+CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS]
 
 # Application definition
 
