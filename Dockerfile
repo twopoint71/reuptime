@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librrd-dev \
     build-essential \
     python3-dev \
+    iputils-ping \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -35,6 +36,13 @@ RUN useradd -m appuser && chown -R appuser:appuser /app
 RUN mkdir -p /app/staticfiles && \
     chown -R appuser:appuser /app/staticfiles
 
+# Set up ping permissions
+RUN chmod u+s /usr/bin/ping
+
+# Make entrypoint script executable
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Switch to non-root user
 USER appuser
 
@@ -44,4 +52,5 @@ RUN python manage.py collectstatic --noinput
 # Expose port
 EXPOSE 8000
 
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "reuptime.wsgi:application"]

@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  web:
+  reuptime:
     build: .
     image: reuptime:latest
     ports:
@@ -13,6 +13,7 @@ services:
       - NET_ADMIN
     environment:
       - TZ=Greenwich Mean Time
+      - DJANGO_SETTINGS_MODULE=reuptime.settings
 
 volumes:
   reuptime_data:
