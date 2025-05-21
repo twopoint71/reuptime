@@ -53,4 +53,8 @@ RUN python manage.py collectstatic --noinput
 EXPOSE 8000
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-", "reuptime.wsgi:application"]
+# normal
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "reuptime.wsgi:application"]
+
+# debug
+#CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--enable-stdio-inheritance",  "--log-level", "debug", "--access-logfile", "-", "--error-logfile", "-", "reuptime.wsgi:application"]
