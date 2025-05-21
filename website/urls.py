@@ -10,7 +10,8 @@ urlpatterns = [
     path("monitored_hosts", views.monitored_hosts, name="monitored_hosts"),
     path("monitored_hosts/add", views.monitored_hosts_add, name="monitored_hosts_add"),
     path("monitored_hosts/settings", views.monitored_hosts_settings, name="monitored_hosts_settings"),
-    path("monitored_hosts/metrics", views.monitored_hosts_metrics, name="monitored_hosts_metrics"),   
+    path("monitored_hosts/metrics", views.monitored_hosts_metrics, name="monitored_hosts_metrics"),
+    path("monitored_hosts/import", views.monitored_hosts_import, name="monitored_hosts_import"),
 
     # Unmonitored Hosts
     path("unmonitored_hosts", views.unmonitored_hosts, name="unmonitored_hosts"),

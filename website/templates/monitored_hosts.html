@@ -158,28 +158,34 @@
 
 <!-- Import Hosts Modal -->
 <div class="modal fade" id="importHostsModal" tabindex="-1" aria-labelledby="importHostsModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="importHostsModalLabel">Import Hosts</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="importHostsForm" action="/import" method="post" enctype="multipart/form-data">
+                <form id="importHostsForm" action="/monitored_hosts/import" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
                     <div class="mb-3">
-                        <label for="csv_file" class="form-label">CSV File</label>
+                        <label for="csv_file" class="form-label"><h5>CSV File (Assumes UTF-8 encoding)</h5></label>
                         <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
                     </div>
                     <div class="mb-3">
-                        <p>CSV should have the following headers:</p>
-                        <ul>
-                            <li>Account Label</li>
-                            <li>Account Id</li>
-                            <li>Region</li>
-                            <li>Host Id</li>
-                            <li>Host IP Address</li>
-                            <li>Hostname</li>
-                        </ul>
+                        <h5>The CSV must have the following headers</h5>
+                        <textarea class="form-control mb-3" rows="3" readonly>"account_label","account_id","region","host_id","host_ip_address","host_name","downtime_allotment","monitor_type","monitor_params"</textarea>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="utils.copyToClipboard(this)">Copy</button>
+                    </div>
+                    <div class="mb-3">
+                        <h5>The following fields are optional</h5>
+                        <dl>
+                            <dt>downtime_allotment</dt>
+                            <dd>If blank, will use the default downtime allotment from the global settings</dd>
+                            <dt>monitor_type</dt>
+                            <dd>If blank, will default to ICMP</dd>
+                            <dt>monitor_params</dt>
+                            <dd>If blank, will default to empty string as ICMP has no parameters</dd>
+                        </dl>
                     </div>
                     <button type="submit" class="btn btn-primary">Import</button>
                 </form>

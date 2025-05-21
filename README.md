@@ -47,6 +47,12 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
         reuptime:latest
     ```
 
+## Development Start
+1. Run
+```
+    DJANGO_DEBUG=True python manage.py runserver 127.0.0.1:8000
+```
+
 ## After Start
 3. Access the web interface at http://localhost:8000
 

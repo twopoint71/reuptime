@@ -167,7 +167,28 @@ var utils = {
             bodyBg: getComputedStyle(document.body).getPropertyValue('--bs-body-bg'),
             bodyColor: getComputedStyle(document.body).getPropertyValue('--bs-body-color')
         }
-    }   
+    },
+    
+    "copyToClipboard": function(button) {
+        const textarea = button.previousElementSibling;
+        textarea.select();
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(textarea.value).then(() => {
+            // Visual feedback
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            setTimeout(() => {
+                button.innerHTML = originalText;
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            button.innerHTML = '<i class="fas fa-times"></i> Failed';
+            setTimeout(() => {
+                button.innerHTML = originalText;
+            }, 2000);
+        });
+    }  
 }
 
 var metricsChart = new function() {

@@ -65,6 +65,64 @@ def monitored_hosts_add(request: HttpRequest) -> Any:
         messages.error(request, f"Failed to add host: {str(e)}")
     return redirect('monitored_hosts')
 
+def monitored_hosts_import(request: HttpRequest) -> Any:
+    try:
+        if 'csv_file' not in request.FILES:
+            messages.error(request, "No CSV file uploaded")
+            return redirect('monitored_hosts')
+
+        csv_file = request.FILES['csv_file']
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, "File must be a CSV")
+            return redirect('monitored_hosts')
+
+        # Read and decode CSV content
+        file_data = csv_file.read().decode('utf-8')
+        lines = file_data.split('\n')
+        
+        # Skip header row and empty lines
+        data_lines = [line for line in lines[1:] if line.strip()]
+        
+        success_count = 0
+        error_count = 0
+        
+        for line in data_lines:
+            try:
+                # Split CSV line and remove quotes
+                fields = [field.strip('"') for field in line.split(',')]
+                
+                if len(fields) < 6:  # Minimum required fields
+                    continue
+                    
+                host_data = {
+                    "account_label": fields[0],
+                    "account_id": fields[1],
+                    "region": fields[2], 
+                    "host_id": fields[3],
+                    "host_ip_address": fields[4],
+                    "host_name": fields[5],
+                    "downtime_allotment": fields[6] if len(fields) > 6 and fields[6] else "",
+                    "monitor_type": fields[7] if len(fields) > 7 and fields[7] else "icmp",
+                    "monitor_params": fields[8] if len(fields) > 8 and fields[8] else ""
+                }
+                
+                HostService.create_host(host_data)
+                success_count += 1
+                
+            except Exception as e:
+                error_count += 1
+                continue
+
+        if success_count > 0:
+            messages.success(request, f"Successfully imported {success_count} hosts")
+        if error_count > 0:
+            messages.warning(request, f"Failed to import {error_count} hosts")
+            
+    except Exception as e:
+        messages.error(request, f"Error processing CSV file: {str(e)}")
+        
+    return redirect('monitored_hosts')
+
 def monitored_hosts_metrics(request: HttpRequest) -> JsonResponse:
     host_uuid = request.GET.get("host_uuid")
     time_range_resolution_code = int(request.GET.get("time_range_resolution_code", 1))

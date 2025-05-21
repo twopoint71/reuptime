@@ -105,10 +105,12 @@ class ICMPMonitor:
         active_hosts = []
         latencies = []
 
-        for host, (is_active, latency) in zip(hosts, results):
-            self.update_host_status(host, is_active, latency)
-
-            if is_active:
+        for host, (ping_active, latency) in zip(hosts, results):
+            # Update host status and get final active state
+            self.update_host_status(host, ping_active, latency)
+            
+            # Use host.is_active (which considers downtime allotment) for aggregates
+            if host.is_active:
                 active_hosts.append(1)
                 latencies.append(latency)
 
