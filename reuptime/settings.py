@@ -26,8 +26,8 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-=xzk3)6xy!%te-=dflt@gk4!yoy6y$v&^$sosffgo9x(c(9+7('
 
-ALLOWED_HOSTS = []
-
+# Get ALLOWED_HOSTS from environment variable, default to ['*'] if not set
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
 # Application definition
 
@@ -141,8 +141,3 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-try:
-    from .local_settings import *
-except ImportError:
-    pass
