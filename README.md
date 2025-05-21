@@ -37,7 +37,8 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
 
 3. Start container
     ```
-    sudo docker run -d \
+    sudo docker run \
+        --detatch \
         --name reuptime \
         --publish 8000:8000 \
         --volume reuptime_data:/app/instance \
