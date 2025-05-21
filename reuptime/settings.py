@@ -24,10 +24,13 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=xzk3)6xy!%te-=dflt@gk4!yoy6y$v&^$sosffgo9x(c(9+7('
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-=xzk3)6xy!%te-=dflt@gk4!yoy6y$v&^$sosffgo9x(c(9+7(')
 
 # Get ALLOWED_HOSTS from environment variable, default to ['*'] if not set
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
+
+# CSRF_TRUSTED_ORGINS is used to allow CSRF tokens to be used for requests from the allowed hosts
+CSRF_TRUSTED_ORGINS = [f"https://{host}" for host in ALLOWED_HOSTS]
 
 # Application definition
 
