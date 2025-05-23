@@ -65,7 +65,16 @@ class HostService:
         return host
     
     @staticmethod
-    def create_host(host_data: Dict[str, str]) -> Hosts:
+    def create_host(host_data: Dict[str, str]) -> tuple[Hosts | None, str]:
+        # Check if host already exists
+        existing_host = Hosts.objects.filter(
+            region=host_data['region'],
+            host_ip_address=host_data['host_ip_address']
+        ).first()
+        
+        if existing_host:
+            return None
+
         # if downtime_allotment is not set, use the default downtime allotment
         if host_data['downtime_allotment'] == '':
             settings = GlobalSettings.objects.filter(key='default_downtime_allotment').first()
@@ -76,7 +85,7 @@ class HostService:
         rrd = RRDService()
         rrd.create_rrd_file(host.uuid)
         return host
-
+    
 class MonitorService:
     @staticmethod
     def get_monitor_status(monitor_type: str) -> Dict[str, Any]:
@@ -88,7 +97,7 @@ class MonitorService:
             'uptime': (current_time - status.last_active).total_seconds(),
             'last_active': status.last_active.isoformat()
         }
-    
+
     @staticmethod
     def control_monitor(monitor_type: str, action: str) -> None:
         if monitor_type != 'icmp':

@@ -85,6 +85,7 @@ def monitored_hosts_import(request: HttpRequest) -> Any:
         data_lines = [line for line in lines[1:] if line.strip()]
         
         success_count = 0
+        duplicate_count = 0
         error_count = 0
         
         for line in data_lines:
@@ -107,8 +108,11 @@ def monitored_hosts_import(request: HttpRequest) -> Any:
                     "monitor_params": fields[8] if len(fields) > 8 and fields[8] else ""
                 }
                 
-                HostService.create_host(host_data)
-                success_count += 1
+                host = HostService.create_host(host_data)
+                if host == None:
+                    duplicate_count += 1
+                else:
+                    success_count += 1
                 
             except Exception as e:
                 error_count += 1
@@ -116,7 +120,9 @@ def monitored_hosts_import(request: HttpRequest) -> Any:
 
         if success_count > 0:
             messages.success(request, f"Successfully imported {success_count} hosts")
-        if error_count > 0:
+        elif duplicate_count > 0:
+            messages.warning(request, f"Skipped {duplicate_count} duplicate hosts")
+        elif error_count > 0:
             messages.warning(request, f"Failed to import {error_count} hosts")
             
     except Exception as e:
