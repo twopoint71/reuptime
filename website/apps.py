@@ -1,5 +1,6 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
+import sys
 
 class WebsiteConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
@@ -7,6 +8,11 @@ class WebsiteConfig(AppConfig):
 
     def ready(self):
         import website.signals
+        
+        # Skip monitor startup during collectstatic
+        if 'collectstatic' in sys.argv:
+            return
+            
         from website.services import SettingsService, MonitorService
         
         # Start monitors if auto-start is enabled
