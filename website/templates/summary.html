@@ -5,7 +5,7 @@
 {% block content %}
 <div class="row mb-4">
     <div class="d-flex justify-content-end">
-        <select class="form-select w-auto" name="refreshInterval" onchange="summary.autoRefresh()">
+        <select class="form-select form-select-sm w-auto" name="summaryRefreshInterval" onchange="summary.autoRefresh()">
             <option value="-1" selected>Auto Refresh: Off</option>
             <option value="60">Auto Refresh: 1 Minute</option>
             <option value="300">Auto Refresh: 5 Minutes</option>

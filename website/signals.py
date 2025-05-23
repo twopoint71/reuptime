@@ -12,3 +12,13 @@ def add_default_setting(sender, **kwargs):
             'description': 'Default bi-weekly downtime allotment for hosts'
         }
     )
+
+@receiver(post_migrate)
+def add_auto_start_setting(sender, **kwargs):
+    GlobalSettings.objects.get_or_create(
+        key='auto_start_monitors',
+        defaults={
+            'value': 0,
+            'description': 'Automatically start monitor daemons on server startup'
+        }
+    )

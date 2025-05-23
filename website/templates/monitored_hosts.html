@@ -11,10 +11,10 @@
 <form name="actions">
     <div class="row mb-3">
         <div id="actionButtons" class="col-md-6">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHostModal">
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addHostModal">
                 Add Host
             </button>
-            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importHostsModal">
+            <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#importHostsModal">
                 Import Hosts
             </button>
         </div>
@@ -23,7 +23,7 @@
             <div class="row float-end">
                 <label class="col-sm-auto col-form-label pe-1" for="sortBy">Sort By</label>
                 <div class="col-sm-auto ps-1">
-                    <select id="sortBy" class="form-select" data-table-id="hostsTable" onchange="utils.tableColumnSort()">
+                    <select id="sortBy" class="form-select form-select-sm" data-table-id="hostsTable" onchange="utils.tableColumnSort()">
                         <option value="1">Hostname</option>
                         <option value="2">IP Address</option>
                         <option value="3">Region</option>
@@ -34,7 +34,7 @@
                 </div>
                 <label class="col-sm-auto col-form-label pe-1" for="orderBy">Order</label>
                 <div class="col-sm-auto ps-1">
-                    <select id="orderBy" class="form-select" data-table-id="hostsTable" onchange="utils.tableColumnSort()">
+                    <select id="orderBy" class="form-select form-select-sm" data-table-id="hostsTable" onchange="utils.tableColumnSort()">
                         <option value="ASC" selected>Ascending</option>
                         <option value="DESC">Descending</option>
                     </select>

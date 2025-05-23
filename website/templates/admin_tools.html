@@ -65,8 +65,25 @@
                                         Each host downtime allotment is reset every 2 weeks.
                                     </small>
                                 </td>
-                                <td>            
-                                    <input type="number" class="form-control" name="downtimeAllotment" value="{{ default_downtime_allotment }}">
+                                <td>
+                                    <input type="number" class="form-control" name="default_downtime_allotment" value="{{ default_downtime_allotment }}">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="pt-3">
+                                    <p class="mb-0"><strong>Automatically start monitor daemons</strong></p>
+                                    <small class="mb-0">
+                                        Automatically start monitor daemons on server startup
+                                    </small>
+                                </td>
+                                <td class="pt-3">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="auto_start_monitors" name="auto_start_monitors" 
+                                               {% if auto_start_monitors %}checked{% endif %}>
+                                        <label class="form-check-label" for="auto_start_monitors">
+                                            Automatically start monitor daemons
+                                        </label>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

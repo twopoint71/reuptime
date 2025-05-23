@@ -144,3 +144,12 @@ class SettingsService:
     @staticmethod
     def update_default_downtime_allotment(value: str) -> None:
         GlobalSettings.objects.filter(key="default_downtime_allotment").update(value=value)
+
+    @staticmethod
+    def get_auto_start_monitors() -> bool:
+        setting = GlobalSettings.objects.filter(key="auto_start_monitors").first()
+        return bool(int(setting.value)) if setting else False
+    
+    @staticmethod
+    def update_auto_start_monitors(value: bool) -> None:
+        GlobalSettings.objects.filter(key="auto_start_monitors").update(value=int(value))

@@ -116,7 +116,9 @@ const summary = new function() {
             }
             
             self.autoRefresh = function() {
-                const refreshInterval = document.querySelector('select[name="refreshInterval"]').value;
+                const refreshInterval = document.querySelector('select[name="summaryRefreshInterval"]').value;
+                localStorage.setItem('summaryRefreshInterval', refreshInterval);                
+                
                 if (refreshInterval == -1) {
                     clearInterval(self.autoRefreshInterval);
                     return;
@@ -133,6 +135,9 @@ const summary = new function() {
             });
             
             self.init = function() {
+                if (localStorage.getItem('summaryRefreshInterval')) {
+                    document.querySelector('select[name="summaryRefreshInterval"]').value = localStorage.getItem('summaryRefreshInterval');
+                }
                 self.themeObserver.observe(document.body, { attributes: true });
                 self.refresh();
             }

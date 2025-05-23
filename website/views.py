@@ -183,8 +183,11 @@ def log_monitor_fetch(request: HttpRequest) -> JsonResponse:
         })
 
 def admin_tools(request: HttpRequest) -> Any:
-    default_downtime_allotment = SettingsService.get_default_downtime_allotment()
-    return render(request, "admin_tools.html", {"default_downtime_allotment": default_downtime_allotment})
+    context = {
+        'default_downtime_allotment': SettingsService.get_default_downtime_allotment(),
+        'auto_start_monitors': SettingsService.get_auto_start_monitors(),
+    }
+    return render(request, 'admin_tools.html', context)
 
 def admin_tools_monitor_status(request: HttpRequest) -> JsonResponse:
     try:
@@ -228,8 +231,12 @@ def admin_tools_system_info(request: HttpRequest) -> JsonResponse:
 
 def admin_tools_global_settings(request: HttpRequest) -> Any:
     try:
-        downtime_allotment = request.POST.get("downtimeAllotment")
+        downtime_allotment = request.POST.get("default_downtime_allotment")
         SettingsService.update_default_downtime_allotment(downtime_allotment)
+        
+        auto_start = request.POST.get("auto_start_monitors") == "on"
+        SettingsService.update_auto_start_monitors(auto_start)
+        
         messages.success(request, "Global settings updated successfully!")
     except Exception as e:
         messages.error(request, f"Failed to update global settings: {str(e)}")

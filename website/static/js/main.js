@@ -359,6 +359,10 @@ var metricsChart = new function() {
             /*
             * time range resolution code
             */
+            if (localStorage.getItem('trrc') == null) {
+                localStorage.setItem('trrc', '1');
+            }
+            const savedTrrc = localStorage.getItem('trrc');
             const trrc = utils.html.select();
             self.trrc = trrc;
             trrc.setAttribute('class', 'form-select form-select-sm');
@@ -371,13 +375,16 @@ var metricsChart = new function() {
                 [5, "Last month @ daily resolution"],
                 [6, "Last year @ weekly resolution "]
             ].forEach(option => {
-                option = utils.html.option(option[TEXT], option[VALUE]);
-                if (option[VALUE] == "1") {
-                    option.setAttribute('selected', 'selected');
+                const optionHTML = utils.html.option(option[TEXT], option[VALUE]);
+                if (option[VALUE] == savedTrrc) {
+                    optionHTML.setAttribute('selected', 'selected');
                 }
-                trrc.append(option);
+                trrc.append(optionHTML);
             });
-            trrc.addEventListener('change', self.refresh);
+            trrc.addEventListener('change', function() {
+                localStorage.setItem('trrc', trrc.value);
+                self.refresh();
+            });
             label = utils.html.label('Time Range & Resolution');
             col = utils.html.div();
             col.setAttribute('class', 'col-md-4');
@@ -428,6 +435,10 @@ var metricsChart = new function() {
             /*
             * auto refresh
             */
+            if (localStorage.getItem('autoRefresh') == null) {
+                localStorage.setItem('autoRefresh', '-1');
+            }
+            const savedAutoRefresh = localStorage.getItem('autoRefresh');
             const autoRefresh = utils.html.select();
             autoRefresh.setAttribute('class', 'form-select form-select-sm w-auto flex-grow-0');
             [
@@ -437,11 +448,11 @@ var metricsChart = new function() {
                 ["1800", "30 Minutes"],
                 ["3600", "1 hour"]
             ].forEach(option => {
-                option = utils.html.option(option[TEXT], option[VALUE]);
-                if (option[VALUE] == "300") {
-                    option.setAttribute('selected', 'selected');
+                const optionHTML = utils.html.option(option[TEXT], option[VALUE]);
+                if (option[VALUE] == savedAutoRefresh) {
+                    optionHTML.setAttribute('selected', 'selected');
                 }
-                autoRefresh.append(option);
+                autoRefresh.append(optionHTML);
             });
             autoRefresh.addEventListener('change', function() {
                 if (autoRefresh.value == -1) {
@@ -450,6 +461,7 @@ var metricsChart = new function() {
                     self.refresh();
                     self.startChartRefresh(interval=autoRefresh.value);
                 }
+                localStorage.setItem('autoRefresh', autoRefresh.value);
             });
             label = utils.html.label('Auto Refresh');
             label.setAttribute('class', 'w-100 text-end');
@@ -493,7 +505,7 @@ var metricsChart = new function() {
                 chart.destroy();
             }
             self.colors = utils.colors();
-            
+
             fetch(`/monitored_hosts/metrics?host_uuid=${self.params.rrdFile}&time_range_resolution_code=${self.trrc.value}`)
             .then(response => response.json())
             .then(data => {
