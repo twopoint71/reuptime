@@ -10,7 +10,8 @@ from website.services import (
 )
 
 def summary(request: HttpRequest) -> Any:
-    return render(request, "summary.html")
+    host_count = HostService.get_host_count()
+    return render(request, "summary.html", {"host_count": host_count})
 
 
 def summary_host_info(request: HttpRequest) -> JsonResponse:

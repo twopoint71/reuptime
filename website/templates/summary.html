@@ -4,6 +4,7 @@
 
 {% block content %}
 <div class="row mb-4">
+    {% if host_count > 0 %}
     <div class="col-md-3 d-flex flex-column gap-3">
         <div class="card h-100 flex-fill" id="monitoredHostsCard">
             <div class="card-header">
@@ -50,6 +51,11 @@
             </div>
         </div>
     </div>
+    {% else %}
+    <div class="alert alert-info">
+        There are no hosts yet. Add your first host to start monitoring.
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

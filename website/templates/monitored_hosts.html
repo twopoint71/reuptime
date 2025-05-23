@@ -50,39 +50,45 @@
         Hosts
     </div>
     <div class="card-body">
-        <table class="table" id="hostsTable">
-            <thead>
-                <tr>
-                    <th>Hostname</th>
-                    <th>IP Address</th>
-                    <th>Region</th>
-                    <th>Status</th>
-                    <th>Available <br>Allotment</th>
-                    <th>Last Check</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for host in host_list %}
-                <tr data-host="{{ host|model_to_json }}">
-                    <td>{{ host.host_name }}</td>
-                    <td>{{ host.host_ip_address }}</td>
-                    <td>{{ host.region }}</td>
-                    <td>
-                        <span class="badge {% if host.is_active %}bg-success{% else %}bg-danger{% endif %}">
-                            {% if host.is_active %}UP{% else %}DOWN{% endif %}
-                        </span>
-                    </td>
-                    <td>{{ host.downtime_allotment }}</td>
-                    <td>{{ host.last_check|date:"Y-m-d H:i" }} UTC</td>
-                    <td>
-                        <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#hostDetailsModal" onclick="populateHostDetailsModal(this)">Details</button>
-                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#hostGraphModal" onclick="populateHostGraphModal(this)">Graph</button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% if host_list %}
+            <table class="table" id="hostsTable">
+                <thead>
+                    <tr>
+                        <th>Hostname</th>
+                        <th>IP Address</th>
+                        <th>Region</th>
+                        <th>Status</th>
+                        <th>Available <br>Allotment</th>
+                        <th>Last Check</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for host in host_list %}
+                    <tr data-host="{{ host|model_to_json }}">
+                        <td>{{ host.host_name }}</td>
+                        <td>{{ host.host_ip_address }}</td>
+                        <td>{{ host.region }}</td>
+                        <td>
+                            <span class="badge {% if host.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if host.is_active %}UP{% else %}DOWN{% endif %}
+                            </span>
+                        </td>
+                        <td>{{ host.downtime_allotment }}</td>
+                        <td>{{ host.last_check|date:"Y-m-d H:i" }} UTC</td>
+                        <td>
+                            <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#hostDetailsModal" onclick="populateHostDetailsModal(this)">Details</button>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#hostGraphModal" onclick="populateHostGraphModal(this)">Graph</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="alert alert-info">
+                There are no hosts yet. Add your first host to start monitoring.
+            </div>
+        {% endif %}
     </div>
 </div>
 

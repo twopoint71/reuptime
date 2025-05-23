@@ -49,7 +49,14 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
     ```
 
 ## Development Start
-1. Run
+1. Make a python virtual environment and fulfill requirements.txt
+```
+    python -m venv .venv
+    source .venv\bin\activate
+    pip install -r requirements.txt
+```
+
+2. Run the server
 ```
     DJANGO_DEBUG=True python manage.py runserver 127.0.0.1:8000
 ```

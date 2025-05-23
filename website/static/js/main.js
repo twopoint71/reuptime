@@ -461,7 +461,9 @@ var metricsChart = new function() {
             refreshActions.append(refreshBtn);
             refreshActions.append(autoRefresh);
             col.append(refreshActions);
-            toolbar.append(col); 
+            if (self.params.refreshEnabled) {
+                toolbar.append(col); 
+            }
             
             html.append(toolbar);
             
@@ -507,6 +509,10 @@ var metricsChart = new function() {
         self.populate = function(params) {
             if (self.params == null || self.params.rrdFile != params.rrdFile) {
                 self.params = params;
+            }
+
+            if (self.params.refreshEnabled == null) {
+                self.params.refreshEnabled = true;
             }
             
             if (self.renderHTML()) {

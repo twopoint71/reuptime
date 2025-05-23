@@ -4,6 +4,11 @@ const summary = new function() {
     
     self.refreshGraph = function() {
         const card = document.getElementById('aggregateUptimeCard');
+        // take no action if card is not found (usually when no hosts exist)
+        if (card == null) {
+            return;
+        }
+
         const monitorType = card.querySelector('select[name="monitorType"]').value;
         const cardTitle = card.querySelector('.card-header [name="title"]');
         const cardBody = card.querySelector('.card-body [name="graph"]');
@@ -18,7 +23,7 @@ const summary = new function() {
         }
         
         cardTitle.textContent = title;
-        const params = { "rrdFile": rrdFile, "container": cardBody };
+        const params = { "rrdFile": rrdFile, "container": cardBody, "refreshEnabled": false };
         metricsChart.populate(params);
     }
     
@@ -74,6 +79,12 @@ const summary = new function() {
         fetch('/summary/host_info')
         .then(response => response.json())
         .then(data => {
+            const dataDetect = Object.values(data).reduce((total, value) => total + value, 0);
+
+            if (dataDetect == 0) {
+                return;
+            }
+
             const totalMonitored = data.monitored_active_count + data.monitored_inactive_count;
             const percentageMonitoredUp = Math.floor((data.monitored_active_count / totalMonitored) * 100);
             const percentageMonitoredDown = Math.floor((data.monitored_inactive_count / totalMonitored) * 100);

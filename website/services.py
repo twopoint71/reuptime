@@ -18,6 +18,10 @@ class HostService:
         return Hosts.objects.filter(is_monitored=1).order_by("is_active")
 
     @staticmethod
+    def get_host_count() -> int:
+        return Hosts.objects.count()
+
+    @staticmethod
     def get_monitored_active_count() -> int:
         return Hosts.objects.filter(is_monitored=1, is_active=1).count()
     

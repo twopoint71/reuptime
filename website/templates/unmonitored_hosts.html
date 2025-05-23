@@ -40,6 +40,7 @@
         Unmonitored Hosts
     </div>
     <div class="card-body">
+        {% if host_list %}
         <table class="table" id="hostsTable">
             <thead>
                 <tr>
@@ -71,6 +72,11 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% else %}
+        <div class="alert alert-info">
+            There are no hosts yet. Add your first host to start monitoring.
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
