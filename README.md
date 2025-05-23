@@ -77,9 +77,8 @@ There are 3 main parts:
 There are unfinished items all over, but I have to get this to prod to start catching data
 1. Implement additional monitor types. The web app framework is sort of there to support this in host and graph interactions.
 2. Implement alert notifications. Under Admin Tools > Global Settings add a configuration item for a destination email relay.
-3. Fix the CSV imports
-4. Write Tests
-5. The suggestion box is open.
+3. Write Tests
+4. The suggestion box is open.
 
 ## Tips
 If the ping service is run in user space, it may fail due to permissions.
