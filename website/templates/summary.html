@@ -4,6 +4,17 @@
 
 {% block content %}
 <div class="row mb-4">
+    <div class="d-flex justify-content-end">
+        <select class="form-select w-auto" name="refreshInterval" onchange="summary.autoRefresh()">
+            <option value="-1" selected>Auto Refresh: Off</option>
+            <option value="60">Auto Refresh: 1 Minute</option>
+            <option value="300">Auto Refresh: 5 Minutes</option>
+            <option value="1800">Auto Refresh: 30 Minutes</option>
+            <option value="3600">Auto Refresh: 1 hour</option>
+        </select>
+    </div>
+</div>
+<div class="row mb-4">
     {% if host_count > 0 %}
     <div class="col-md-3 d-flex flex-column gap-3">
         <div class="card h-100 flex-fill" id="monitoredHostsCard">

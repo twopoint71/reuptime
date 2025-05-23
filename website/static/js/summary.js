@@ -115,6 +115,15 @@ const summary = new function() {
                 self.refreshStatus();
             }
             
+            self.autoRefresh = function() {
+                const refreshInterval = document.querySelector('select[name="refreshInterval"]').value;
+                if (refreshInterval == -1) {
+                    clearInterval(self.autoRefreshInterval);
+                    return;
+                }
+                self.autoRefreshInterval = setInterval(self.refresh, refreshInterval * 1000);
+            }
+
             self.themeObserver = new MutationObserver((mutations) => {
                 for (const mutation of mutations) {
                     if (mutation.attributeName === 'data-bs-theme') {
