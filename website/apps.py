@@ -9,16 +9,20 @@ class WebsiteConfig(AppConfig):
     def ready(self):
         import website.signals
         
-        # Skip monitor startup during collectstatic
-        if 'collectstatic' in sys.argv:
+        # Skip monitor startup during collectstatic or migrations
+        if 'collectstatic' in sys.argv or 'makemigrations' in sys.argv or 'migrate' in sys.argv:
             return
             
-        from website.services import SettingsService, MonitorService
-        
-        # Start monitors if auto-start is enabled
-        if SettingsService.get_auto_start_monitors():
-            try:
-                MonitorService.control_monitor('icmp', 'start')
-            except Exception as e:
-                # Log the error but don't prevent server startup
-                print(f"Failed to start ICMP monitor: {e}")
+        # Defer the imports and monitor startup to avoid early database access
+        def start_monitors(sender, **kwargs):
+            from website.services import SettingsService, MonitorService
+            
+            # Start monitors if auto-start is enabled
+            if SettingsService.get_auto_start_monitors():
+                try:
+                    MonitorService.control_monitor('icmp', 'start')
+                except Exception as e:
+                    print(f"Failed to start ICMP monitor: {e}")
+
+        # Connect to post_migrate signal to ensure database is ready
+        post_migrate.connect(start_monitors, sender=self)

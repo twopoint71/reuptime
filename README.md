@@ -49,11 +49,13 @@ A lightweight, self-hosted uptime monitoring solution for tracking the availabil
     ```
 
 ## Development Start
-1. Make a python virtual environment and fulfill requirements.txt
+1. Make a python virtual environment and fulfill requirements.txt. Use a python version with support for Django 5.2
 ```
     python -m venv .venv
     source .venv\bin\activate
     pip install -r requirements.txt
+    ./manage.py makemigrations
+    ./manage.py migrate
 ```
 
 2. Run the server
