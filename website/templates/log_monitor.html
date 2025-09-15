@@ -6,30 +6,35 @@
 <div class="row">
     <div class="col-12">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Log Monitor</h5>
-                <div class="d-flex align-items-center">
-                    <button id="refreshLogBtn" class="btn btn-sm btn-primary me-2" aria-label="Refresh Now">
-                        <i class="fa fa-refresh"></i> Refresh
-                    </button>
-                    <select id="autoRefreshForm" class="form-select form-select-sm me-2" style="width: auto;" aria-label="Auto Refresh">
-                        <option value="-1">Auto Refresh: Off</option>
-                        <option value="30">Auto Refresh: 30 Seconds</option>
-                        <option value="60">Auto Refresh: 1 Minute</option>
-                        <option value="300">Auto Refresh: 5 Minutes</option>
-                        <option value="1800">Auto Refresh: 30 Minutes</option>
-                        <option value="3600">Auto Refresh: 1 hour</option>
-                    </select>
-                    <select id="logTypeForm" class="form-select form-select-sm me-2" style="width: auto;" aria-label="Log Type">
-                        <option value="monitors" selected>Log: Monitors</option>
-                        <option value="rrd">Log: RRD</option>
-                    </select>
-                    <select id="logTailForm" class="form-select form-select-sm" style="width: auto;" aria-label="Tail Log Lines">
-                        <option value="50" selected>Tail: 50 lines</option>
-                        <option value="100">Tail: 100 lines</option>
-                        <option value="200">Tail: 200 lines</option>
-                        <option value="500">Tail: 500 lines</option>
-                    </select>
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Log Monitor</h5>
+                    <div class="d-flex align-items-center">
+                        <button id="refreshLogBtn" class="btn btn-sm btn-primary me-2" aria-label="Refresh Now">
+                            <i class="fa fa-refresh"></i> Refresh
+                        </button>
+                        <select id="autoRefreshForm" class="form-select form-select-sm me-2" style="width: auto;" aria-label="Auto Refresh">
+                            <option value="-1">Auto Refresh: Off</option>
+                            <option value="30">Auto Refresh: 30 Seconds</option>
+                            <option value="60">Auto Refresh: 1 Minute</option>
+                            <option value="300">Auto Refresh: 5 Minutes</option>
+                            <option value="1800">Auto Refresh: 30 Minutes</option>
+                            <option value="3600">Auto Refresh: 1 hour</option>
+                        </select>
+                        <select id="logTypeForm" class="form-select form-select-sm me-2" style="width: auto;" aria-label="Log Type">
+                            <option value="monitors" selected>Log: Monitors</option>
+                            <option value="rrd">Log: RRD</option>
+                        </select>
+                        <select id="logTailForm" class="form-select form-select-sm" style="width: auto;" aria-label="Tail Log Lines">
+                            <option value="50" selected>Tail: 50 lines</option>
+                            <option value="100">Tail: 100 lines</option>
+                            <option value="200">Tail: 200 lines</option>
+                            <option value="500">Tail: 500 lines</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <small class="text-muted" id="lastRefreshTime">Last log refresh: <span id="logRefreshTimestamp">Never</span></small>
                 </div>
             </div>
             <div class="card-body">
@@ -40,8 +45,8 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}
 
 {% block scripts %}
 <script src="/static/js/log_monitor.js"></script>
-{% endblock %} 
+{% endblock %}

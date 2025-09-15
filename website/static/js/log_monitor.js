@@ -8,10 +8,10 @@ const log_monitor = new function() {
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
-            
+
             const data = await response.json();
             self.logContent.textContent = data.log_content;
-            
+            self.logRefreshTimestamp.textContent = data.server_timestamp;
             // Scroll to bottom
             self.logContent.parentElement.scrollTop = self.logContent.parentElement.scrollHeight;
         } catch (error) {
@@ -23,6 +23,7 @@ const log_monitor = new function() {
     self.init = function() {
         self.logType = document.getElementById('logTypeForm');
         self.logContent = document.getElementById('logContent');
+        self.logRefreshTimestamp = document.getElementById('logRefreshTimestamp');
         self.refreshLogBtn = document.getElementById('refreshLogBtn');
         self.autoRefreshSelect = document.getElementById('autoRefreshForm');
         self.logTailSelect = document.getElementById('logTailForm');
@@ -40,7 +41,7 @@ const log_monitor = new function() {
                 self.autoRefreshInterval = setInterval(self.fetchLogData, self.autoRefreshSelect.value * 1000);
             }
         });
-        
+
         self.fetchLogData();
     }
 }

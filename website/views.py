@@ -173,9 +173,11 @@ def log_monitor_fetch(request: HttpRequest) -> JsonResponse:
     try:
         log_type = request.GET.get("log_type", "monitors")
         log_tail = int(request.GET.get("log_tail", 50))
+        from datetime import datetime
+        server_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         log_content = LogService.get_log_content(log_type, log_tail)
-        return JsonResponse({"log_content": log_content}, safe=False)
+        return JsonResponse({"log_content": log_content, "server_timestamp": server_timestamp}, safe=False)
     except Exception as e:
         return JsonResponse({
             "error": str(e),

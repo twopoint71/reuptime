@@ -74,6 +74,10 @@
     <div class="container mt-4">
         {% block content %}{% endblock %}
     </div>
+
+    <div class="container md-4 text-center pt-3">
+        <small class="text-muted">Server time {% now "Y-m-d H:i:s" %}</small>
+    </div>
     
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/chart.js"></script>
